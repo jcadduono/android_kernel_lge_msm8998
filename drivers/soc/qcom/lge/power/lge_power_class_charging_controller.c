@@ -619,10 +619,12 @@ static int lge_power_lge_cc_set_property(struct lge_power *lpc,
 
 		case LGE_POWER_PROP_CHARGE_DONE:
 			cc->chg_done = val->intval;
+#ifdef CONFIG_LGE_USB_FACTORY
 			if (lge_get_boot_mode() == LGE_BOOT_MODE_CHARGERLOGO) {
 				lg_cc_stop_battemp_work(cc);
 				lg_cc_start_battemp_work(cc, 2);
 			}
+#endif
 			break;
 		case LGE_POWER_PROP_OTP_ENABLE:
 			if (cc->otp_enable != val->intval) {
@@ -857,11 +859,15 @@ static int lge_charging_controller_probe(struct platform_device *pdev) {
 	cc->test_chg_scenario = 0;
 	cc->test_batt_therm_value = 25;
 	cc->update_type = 0;
+#ifdef CONFIG_LGE_USB_FACTORY
 	if (lge_get_boot_mode() != LGE_BOOT_MODE_CHARGERLOGO) {
+#endif
 		cc->quick_chg_status = HVDCP_STATUS_LCD_ON;
 		cc->lcd_status = true;
 		lgcc_vote_fcc(LGCC_REASON_LCD, RESTRICTED_LCD_STATE);
+#ifdef CONFIG_LGE_USB_FACTORY
 	}
+#endif
 
 	pr_info("LG Charging controller probe done~!!\n");
 

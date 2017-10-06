@@ -88,12 +88,17 @@ int btfm_slim_chrk_enable_port(struct btfmslim *btfmslim, uint8_t port_num,
 
 	BTFMSLIM_DBG("port(%d) enable(%d)", port_num, enable);
 	if (rxport) {
+#ifdef CONFIG_MACH_LGE
 		if (enable) {
 			/* For SCO Rx, A2DP Rx */
+#else
+		if (enable && btfmslim->sample_rate == 48000) {
+			/* For A2DP Rx */
+#endif
 			reg_val = 0x1;
 			port_bit = port_num - 0x10;
 			reg = CHRK_SB_PGD_RX_PORTn_MULTI_CHNL_0(port_bit);
-            BTFMSLIM_DBG("writing reg_val (%d) to reg(%x)",
+			BTFMSLIM_DBG("writing reg_val (%d) to reg(%x) for A2DP",
 					reg_val, reg);
 			ret = btfm_slim_write(btfmslim, reg, 1, &reg_val, IFD);
 			if (ret) {

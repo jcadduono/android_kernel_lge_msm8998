@@ -401,6 +401,7 @@ struct smb_charger {
 	struct work_struct	lge_cc_work;
 	struct lge_power		*lge_cc_lpc;
 	struct mutex			lge_cc_ibat_lock;
+	struct delayed_work	dc_lcd_current_work;
 	int btm_state;
 	int pseudo_chg_ui;
 #endif
@@ -430,7 +431,6 @@ struct smb_charger {
 #ifdef CONFIG_IDTP9223_CHARGER
 	struct power_supply	*wlc_psy;
 	struct work_struct	idtp9223_work;
-	struct delayed_work	dc_lcd_current_work;
 	int			dc_fastchg;
 #endif
 #ifdef CONFIG_LGE_PM_WEAK_BATT_PACK

@@ -22,16 +22,12 @@
 #include "../msm_sensor.h"
 #endif
 DEFINE_MSM_MUTEX(msm_ois_mutex);
-#if 1//def CONFIG_MACH_LGE
-	/* Moved to msm_ois.h */
-#else
-	//#define MSM_OIS_DEBUG
+/*#define MSM_OIS_DEBUG*/
 #undef CDBG
 #ifdef MSM_OIS_DEBUG
 #define CDBG(fmt, args...) pr_err(fmt, ##args)
 #else
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
-#endif
 #endif
 
 static struct v4l2_file_operations msm_ois_v4l2_subdev_fops;

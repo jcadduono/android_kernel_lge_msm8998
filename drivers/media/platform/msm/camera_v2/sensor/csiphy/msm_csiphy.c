@@ -1248,7 +1248,7 @@ static int msm_csiphy_init(struct csiphy_device *csiphy_dev)
 		csiphy_dev->hw_version = csiphy_dev->hw_dts_version;
 
 	csiphy_dev->csiphy_sof_debug = SOF_DEBUG_DISABLE;
-	pr_info("%s:%d called csiphy_dev->hw_version 0x%x\n", __func__, __LINE__,
+	CDBG("%s:%d called csiphy_dev->hw_version 0x%x\n", __func__, __LINE__,
 		csiphy_dev->hw_version);
 	csiphy_dev->csiphy_state = CSIPHY_POWER_UP;
 	return 0;
@@ -1411,7 +1411,7 @@ static int msm_csiphy_release(struct csiphy_device *csiphy_dev, void *arg)
 	}
 
 	if (--csiphy_dev->ref_count) {
-		pr_info("%s csiphy refcount = %d\n", __func__,
+		CDBG("%s csiphy refcount = %d\n", __func__,
 			csiphy_dev->ref_count);
 		return 0;
 	}

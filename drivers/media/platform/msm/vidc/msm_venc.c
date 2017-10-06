@@ -54,12 +54,12 @@
  * 3x3 transformation matrix coefficients in s4.9 fixed point format
  */
 static u32 vpe_csc_601_to_709_matrix_coeff[HAL_MAX_MATRIX_COEFFS] = {
-    440, 8140, 8098, 0, 460, 52, 0, 34, 463 //LGE_CHANGE, 2017-05-17, modified CSC issue by QCT patch, seunghwan.nam@lge.com
+	440, 8140, 8098, 0, 460, 52, 0, 34, 463
 };
 
 /* offset coefficients in s9 fixed point format */
 static u32 vpe_csc_601_to_709_bias_coeff[HAL_MAX_BIAS_COEFFS] = {
-    53, 0, 4 //LGE_CHANGE, 2017-05-17, modified CSC issue by QCT patch, seunghwan.nam@lge.com
+	53, 0, 4
 };
 
 /* clamping value for Y/U/V([min,max] for Y/U/V) */

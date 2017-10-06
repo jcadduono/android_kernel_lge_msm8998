@@ -31,6 +31,7 @@ DEFINE_MSM_MUTEX(msm_actuator_mutex);
 #define PARK_LENS_MID_STEP 5
 #define PARK_LENS_SMALL_STEP 3
 #define MAX_QVALUE 4096
+
 #ifdef RENESAS_MODULE
 #define EEPROM_ADDR 0xA8
 #define EEPROM_MAP_VERSION 0x0BE2
@@ -41,12 +42,14 @@ static uint32_t fw_version = 0;
 void msm_actuator_claf_renesas_write_vcm( struct msm_actuator_ctrl_t *a_ctrl, uint16_t tar_pos);
 extern uint16_t map_ver;
 #endif
-static struct v4l2_file_operations msm_actuator_v4l2_subdev_fops;
-static int32_t msm_actuator_power_up(struct msm_actuator_ctrl_t *a_ctrl);
-static int32_t msm_actuator_power_down(struct msm_actuator_ctrl_t *a_ctrl);
 #ifdef CONFIG_MACH_LGE
 extern void lgit_imx351_rohm_write_vcm(int16_t nDAC);
 #endif
+
+static struct v4l2_file_operations msm_actuator_v4l2_subdev_fops;
+static int32_t msm_actuator_power_up(struct msm_actuator_ctrl_t *a_ctrl);
+static int32_t msm_actuator_power_down(struct msm_actuator_ctrl_t *a_ctrl);
+
 static struct msm_actuator msm_vcm_actuator_table;
 static struct msm_actuator msm_piezo_actuator_table;
 static struct msm_actuator msm_hvcm_actuator_table;
@@ -1692,10 +1695,11 @@ static int32_t msm_actuator_set_param(struct msm_actuator_ctrl_t *a_ctrl,
 	int32_t rc = -EFAULT;
 	uint16_t i = 0;
 	struct msm_camera_cci_client *cci_client = NULL;
-	CDBG("Enter type %d, i2c addr %x \n", set_info->actuator_params.act_type,  set_info->actuator_params.i2c_addr);
+	CDBG("Enter\n");
 
 	for (i = 0; i < ARRAY_SIZE(actuators); i++) {
-		if (set_info->actuator_params.act_type == actuators[i]->act_type) {
+		if (set_info->actuator_params.act_type ==
+			actuators[i]->act_type) {
 			a_ctrl->func_tbl = &actuators[i]->func_tbl;
 			rc = 0;
 		}
@@ -1732,6 +1736,7 @@ static int32_t msm_actuator_set_param(struct msm_actuator_ctrl_t *a_ctrl,
 		pr_err("MAX_ACTUATOR_REGION is exceeded.\n");
 		return -EFAULT;
 	}
+
 	a_ctrl->act_type    = set_info->actuator_params.act_type;
 	a_ctrl->region_size = set_info->af_tuning_params.region_size;
 	a_ctrl->pwd_step = set_info->af_tuning_params.pwd_step;
@@ -2399,11 +2404,10 @@ static int32_t msm_actuator_platform_probe(struct platform_device *pdev)
 		(&pdev->dev)->of_node);
 #ifndef CONFIG_MACH_LGE
 	if (rc <= 0) {
-		pr_err("%s: No/Error Actuator GPIOs\n", __func__);
 #else
 	if (rc < 0) {
-		pr_err("%s: No/Error Actuator GPIOs\n", __func__);
 #endif
+		pr_err("%s: No/Error Actuator GPIOs\n", __func__);
 	} else {
 		msm_actuator_t->cam_pinctrl_status = 1;
 		rc = msm_camera_pinctrl_init(

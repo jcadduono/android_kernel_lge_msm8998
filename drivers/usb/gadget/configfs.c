@@ -35,8 +35,10 @@ void acc_disconnect(void);
 #endif
 
 #ifdef CONFIG_LGE_USB_GADGET
+#ifdef CONFIG_USB_F_NCM
 extern int ncm_ctrlrequest(struct usb_composite_dev *cdev,
 				const struct usb_ctrlrequest *ctrl);
+#endif
 #endif
 
 static struct class *android_class;
@@ -1739,8 +1741,10 @@ static int android_setup(struct usb_gadget *gadget,
 		}
 	}
 #ifdef CONFIG_LGE_USB_GADGET
+#ifdef CONFIG_USB_F_NCM
 	if (value < 0)
 		value = ncm_ctrlrequest(cdev, c);
+#endif
 #endif
 #ifdef CONFIG_USB_CONFIGFS_F_ACC
 	if (value < 0)

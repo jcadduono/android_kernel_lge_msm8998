@@ -302,7 +302,7 @@ static int lge_interval_display_info_init(void)
 	if (!dinfo.init) {
 		dinfo.fbi_list =
 			(struct fb_info **)kallsyms_lookup_name("fbi_list");
-		if (dinfo.fbi_list[0] == NULL)
+		if (dinfo.fbi_list || dinfo.fbi_list[0] == NULL)
 			return -EFAULT;
 
 		dinfo.mfd = dinfo.fbi_list[0]->par;

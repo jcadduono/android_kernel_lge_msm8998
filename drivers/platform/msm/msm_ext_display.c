@@ -9,11 +9,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-#if defined(CONFIG_LGE_DISPLAY_COMMON)
-#define pr_fmt(fmt)	"[DisplayPort] %s: " fmt, __func__
-#else
+
 #define pr_fmt(fmt)	"%s: " fmt, __func__
-#endif
 
 #include <linux/slab.h>
 #include <linux/bitops.h>
@@ -183,7 +180,7 @@ static int msm_ext_disp_send_cable_notification(struct msm_ext_disp *ext_disp,
 	state = ext_disp->hdmi_sdev.state;
 	switch_set_state(&ext_disp->hdmi_sdev, !!new_state);
 
-	pr_info("Cable state %s %d\n",
+	pr_debug("Cable state %s %d\n",
 			ext_disp->hdmi_sdev.state == state ?
 			"is same" : "switched to",
 			ext_disp->hdmi_sdev.state);
@@ -204,7 +201,7 @@ static int msm_ext_disp_send_audio_notification(struct msm_ext_disp *ext_disp,
 	state = ext_disp->audio_sdev.state;
 	switch_set_state(&ext_disp->audio_sdev, !!new_state);
 
-	pr_info("Audio state %s %d\n",
+	pr_debug("Audio state %s %d\n",
 			ext_disp->audio_sdev.state == state ?
 			"is same" : "switched to",
 			ext_disp->audio_sdev.state);
@@ -337,7 +334,7 @@ static int msm_ext_disp_hpd(struct platform_device *pdev,
 
 	mutex_lock(&ext_disp->lock);
 
-	pr_info("HPD for display (%s), NEW STATE = %d, flags = %d\n",
+	pr_debug("HPD for display (%s), NEW STATE = %d, flags = %d\n",
 			msm_ext_disp_name(type), state, flags);
 
 	if (state < EXT_DISPLAY_CABLE_DISCONNECT ||
@@ -385,7 +382,7 @@ static int msm_ext_disp_hpd(struct platform_device *pdev,
 			ext_disp->current_disp = EXT_DISPLAY_TYPE_MAX;
 	}
 
-	pr_info("Hpd (%d) for display (%s)\n", state,
+	pr_debug("Hpd (%d) for display (%s)\n", state,
 			msm_ext_disp_name(type));
 
 end:
@@ -638,7 +635,7 @@ static int msm_ext_disp_notify(struct platform_device *pdev,
 		goto end;
 	}
 
-	pr_info("%s notifying hpd (%d)\n",
+	pr_debug("%s notifying hpd (%d)\n",
 		msm_ext_disp_name(ext_disp->current_disp), state);
 
 	complete_all(&ext_disp->hpd_comp);

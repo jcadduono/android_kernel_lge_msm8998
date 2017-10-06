@@ -32,7 +32,11 @@
 #define CYCLES_PER_MICRO_SEC_DEFAULT 4915
 #define CCI_MAX_DELAY 1000000
 
+#ifdef CONFIG_MACH_LGE
 #define CCI_TIMEOUT msecs_to_jiffies(500)
+#else
+#define CCI_TIMEOUT msecs_to_jiffies(100)
+#endif
 
 /* TODO move this somewhere else */
 #define MSM_CCI_DRV_NAME "msm_cci"
@@ -622,7 +626,8 @@ static int32_t msm_cci_data_queue(struct cci_device *cci_dev,
 	uint32_t read_val = 0;
 	uint32_t reg_offset;
 	uint32_t val = 0;
-	uint32_t max_queue_size, queue_size = 0;
+	uint32_t queue_size = 0;
+	uint32_t max_queue_size;
 	unsigned long flags;
 
 	if (i2c_cmd == NULL) {

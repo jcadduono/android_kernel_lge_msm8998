@@ -69,7 +69,9 @@ static ssize_t pre_selfd_store(struct device *dev, struct device_attribute *attr
 {
     char str[512];
     int str_len = 0;
+#ifdef CONFIG_LGE_USB_FACTORY
     if ( !lge_get_factory_boot() ) return -EINVAL;
+#endif
 
     if ( buf[0] =='$' )
     {
@@ -105,7 +107,9 @@ int lge_pre_self_diagnosis(char *drv_bus_code, int func_code, char *dev_code, ch
 {
     char str[512];
     int str_len = 0;
+#ifdef CONFIG_LGE_USB_FACTORY
     if ( !lge_get_factory_boot() ) return 1;
+#endif
 
     str_len = sprintf(str, "%s|%d|%s|%s|%d\n", drv_bus_code, func_code, dev_code, drv_code, errno);
     if ( (selfd_cnt+str_len) > 4096 )

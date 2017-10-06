@@ -2035,7 +2035,9 @@ static int smb2_init_hw(struct smb2 *chip)
 #ifdef CONFIG_LGE_PM
        int batt_present;
        union power_supply_propval val = {0,};
+#ifdef CONFIG_LGE_USB_FACTORY
        lge_factory_cable_t factory_cable_boot;
+#endif
 #endif
 
 	if (chip->dt.no_battery)
@@ -2102,6 +2104,7 @@ static int smb2_init_hw(struct smb2 *chip)
 	else
 		batt_present = val.intval;
 
+#ifdef CONFIG_LGE_USB_FACTORY
 	factory_cable_boot = lge_get_factory_cable();
 	pr_info("factory_cable = %d, present = %d, apsd_status = 0x%x\n",
 			factory_cable_boot, batt_present, stat);
@@ -2122,6 +2125,10 @@ static int smb2_init_hw(struct smb2 *chip)
 		chg->no_batt_boot = false;
 		smblib_rerun_apsd_if_required(chg);
 	}
+#else
+	chg->no_batt_boot = false;
+	smblib_rerun_apsd_if_required(chg);
+#endif /* CONFIG_LGE_USB_FACTORY */
 #else
 	smblib_rerun_apsd_if_required(chg);
 #endif

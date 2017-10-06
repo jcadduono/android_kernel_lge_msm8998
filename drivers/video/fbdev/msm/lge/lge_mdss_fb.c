@@ -55,6 +55,7 @@ static inline bool is_blank_called(void)
 
 static inline bool is_factory_cable(void)
 {
+#ifdef CONFIG_LGE_USB_FACTORY
 	unsigned int cable_info;
 #ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_CABLE_DETECT
 	struct lge_power *lge_cd_lpc;
@@ -117,6 +118,7 @@ static inline bool is_factory_cable(void)
 #else
 	cable_info = 0;
 #endif
+#endif /* CONFIG_LGE_USB_FACTORY */
 		return false;
 }
 
@@ -178,7 +180,7 @@ bool lge_battery_present(void){
 /*---------------------------------------------------------------------------*/
 /* BIST Masking                                                              */
 /*---------------------------------------------------------------------------*/
-#if defined(CONFIG_LGE_DISPLAY_BIST_MODE)
+#if defined(CONFIG_LGE_DISPLAY_BIST_MODE) && defined(CONFIG_LGE_USB_FACTORY)
 static int lge_mdss_panel_factory_bist_ctrl(struct msm_fb_data_type *mfd, bool enable)
 {
 	struct mdss_panel_data *pdata = NULL;
@@ -269,7 +271,7 @@ int lge_br_to_bl (struct msm_fb_data_type *mfd, int br_lvl)
 #endif /* CONFIG_LGE_HIGH_LUMINANCE_MODE */
 #endif /* CONFIG_LGE_DISPLAY_VIDEO_ENHANCEMENT */
 
-#if defined(CONFIG_LGE_DISPLAY_BIST_MODE)
+#if defined(CONFIG_LGE_DISPLAY_BIST_MODE) && defined(CONFIG_LGE_USB_FACTORY)
 	if (lge_get_factory_boot()) {
 		bool enable = ((br_lvl == 0) ? true : false);
 		if (lge_mdss_panel_factory_bist_ctrl(mfd, enable) < 0) {

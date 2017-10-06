@@ -3190,7 +3190,7 @@ static const struct file_operations codec_debug_ops = {
 	.read = mbhc_debug_read
 };
 #endif
-#if defined(CONFIG_SND_SOC_ES9218P) && defined(CONFIG_MACH_MSM8998_JOAN)
+#ifdef CONFIG_SND_SOC_ES9218P
 struct wcd_mbhc *ESSMbhc;
 static int force_set_clamper = 0;
 void wcd_set_clamp_on_mic(int value)

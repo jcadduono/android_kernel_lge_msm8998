@@ -707,11 +707,15 @@ static void lge_battery_profile_read_work(struct work_struct *work)
 			schedule_delayed_work(&ttf->battery_profile_read_work, BATT_PROFILE_READ_TIME);
 		}
 		if (ttf->chargerlogo_supported) {
+#ifdef CONFIG_LGE_USB_FACTORY
 			if (lge_get_boot_mode() == LGE_BOOT_MODE_CHARGERLOGO) {
 				match_chargerlogo = of_property_read_bool(child, "lge,chargerlogo-profile");
 			} else {
 				match_chargerlogo = !of_property_read_bool(child, "lge,chargerlogo-profile");
 			}
+#else
+			match_chargerlogo = !of_property_read_bool(child, "lge,chargerlogo-profile");
+#endif
 		} else {
 			match_chargerlogo = true;
 		}

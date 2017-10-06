@@ -939,9 +939,11 @@ void mmc_request_done(struct mmc_host *host, struct mmc_request *mrq)
 			mrq->done(mrq);
 	} else {
 		mmc_should_fail_request(host, mrq);
+
 #if !defined(CONFIG_MACH_LGE) || !defined(CONFIG_LGE_MMC_CQ_ENABLE)
 		led_trigger_event(host->led, LED_OFF);
 #endif
+
 		if (mrq->sbc) {
 			pr_debug("%s: req done <CMD%u>: %d: %08x %08x %08x %08x\n",
 				mmc_hostname(host), mrq->sbc->opcode,
@@ -1116,6 +1118,7 @@ static int mmc_start_request(struct mmc_host *host, struct mmc_request *mrq)
 #ifndef CONFIG_MACH_LGE
 	led_trigger_event(host->led, LED_FULL);
 #endif
+
 	if (mmc_is_data_request(mrq)) {
 		mmc_deferred_scaling(host);
 		mmc_clk_scaling_start_busy(host, true);
@@ -1861,14 +1864,6 @@ int mmc_interrupt_hpi(struct mmc_card *card)
 	} while (!err);
 
 out:
-#ifdef CONFIG_MACH_LGE
-	/* LGE_CHANGE, 2015-09-23, H1-BSP-FS@lge.com
-	 * add debug code
-	 */
-	if (err) {
-		pr_err("%s: mmc_interrupt_hpi() failed. err: (%d)\n", mmc_hostname(card->host), err);
-	}
-#endif
 	mmc_release_host(card->host);
 	return err;
 }
@@ -3123,17 +3118,7 @@ void mmc_power_up(struct mmc_host *host, u32 ocr)
 void mmc_power_off(struct mmc_host *host)
 {
 	if (host->ios.power_mode == MMC_POWER_OFF)
-	#ifdef CONFIG_MACH_LGE
-	/* LGE_CHANGE, 2015-09-23, H1-BSP-FS@lge.com
-	 * If it is already power-off, skip below.
-	 */
-	{
-		printk(KERN_INFO "[LGE][MMC][%-18s( )] host->index:%d, already power-off, skip below\n", __func__, host->index);
 		return;
-	}
-	#else
-		return;
-	#endif
 
 	mmc_host_clk_hold(host);
 
@@ -4139,10 +4124,6 @@ int _mmc_detect_card_removed(struct mmc_host *host)
 		}
 	}
 
-	#ifdef CONFIG_MACH_LGE
-	printk(KERN_INFO "[LGE][MMC][%-18s( )] end, mmc%d, return %d\n", __func__, host->index, ret);
-	#endif
-
 	return ret;
 }
 
@@ -4188,10 +4169,7 @@ void mmc_rescan(struct work_struct *work)
 		container_of(work, struct mmc_host, detect.work);
 
 #ifdef CONFIG_MACH_LGE
-	/* LGE_CHANGE, 2015-09-23, H1-BSP-FS@lge.com
-	* Adding Print
-	*/
-	//printk(KERN_INFO "[LGE][MMC][%-18s( ) START!] mmc%d\n", __func__, host->index);
+	/* LGE_CHANGE, 2015-09-23, H1-BSP-FS@lge.com */
 	int err = 0;
 #endif
 
@@ -4275,9 +4253,8 @@ void mmc_rescan(struct work_struct *work)
 	mmc_release_host(host);
 
 #ifdef CONFIG_MACH_LGE
-	if(err == -EIO && !(host->caps & MMC_CAP_NONREMOVABLE))
-	{
-		printk(KERN_INFO "[LGE][MMC][%-18s( )] mmc%d: SDcard is damaged\n", __func__, host->index);
+	if (err == -EIO && !(host->caps & MMC_CAP_NONREMOVABLE)) {
+		pr_warn("[LGE][MMC][%-18s( )] mmc%d: SDcard is damaged\n", __func__, host->index);
 		is_damaged_sd = 1;
 	}
 #endif

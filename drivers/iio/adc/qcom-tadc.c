@@ -224,11 +224,11 @@ struct tadc_chip {
 	struct completion	eoc_complete;
 	struct mutex		write_lock;
 	struct mutex		conv_lock;
-	u8          hwtrig_conv;
 	struct power_supply	*usb_psy;
 	struct votable		*tadc_disable_votable;
 	struct work_struct	status_change_work;
 	struct notifier_block	nb;
+	u8			hwtrig_conv;
 };
 
 struct tadc_pt {

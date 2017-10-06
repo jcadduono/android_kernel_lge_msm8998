@@ -516,6 +516,10 @@ struct mdss_dsi_ctrl_pdata {
 	struct dsi_panel_cmds *ambient_cmds;
 	bool ambient_reg_backup;
 #endif
+#if defined(CONFIG_LGE_ENHANCE_GALLERY_SHARPNESS)
+	struct dsi_panel_cmds sharpness_on_cmds;
+	struct dsi_panel_cmds ce_on_cmds;
+#endif
 	struct dsi_panel_cmds post_dms_on_cmds;
 	struct dsi_panel_cmds post_panel_on_cmds;
 	struct dsi_panel_cmds off_cmds;

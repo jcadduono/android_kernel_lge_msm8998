@@ -8342,6 +8342,8 @@ int q6asm_set_lgesoundmabl_monoenable(struct audio_client *ac, int monoenable)
 fail_cmd:
         return rc;
 }
+#endif
+
 int q6asm_set_lgmqa_param_properties(struct audio_client *ac, long *val)
 {
         struct asm_lgmqa_param_all lgmqa_paramAll;
@@ -8473,6 +8475,7 @@ fail_cmd:
         return rc;
 }
 
+#ifdef CONFIG_SND_LGE_MABL
 int q6asm_set_lgesoundmabl_lrbalancecontrol(struct audio_client *ac, int lrbalancecontrol)
 {
         struct asm_lgesoundmabl_param_lrbalancecontrol lgesoundmabl_lrbalancecontrol;

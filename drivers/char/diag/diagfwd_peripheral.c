@@ -1201,9 +1201,9 @@ int diagfwd_channel_open(struct diagfwd_info *fwd_info)
 	diagfwd_buffers_init(fwd_info);
 
 	/*
- *	Initialize buffers for glink supported peripherals only.
- *	Open control channel to update masks after buffers are initialized.
- *
+	 *	Initialize buffers for glink supported
+	 *	peripherals only. Open control channel to update
+	 *	masks after buffers are initialized.
 	 */
 	if (fwd_info->transport == TRANSPORT_GLINK) {
 		diagfwd_write_buffers_init(fwd_info);

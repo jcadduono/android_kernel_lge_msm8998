@@ -101,6 +101,7 @@ int detect_factory_cable(void)
 {
 	int factory_cable = 0;
 
+#ifdef CONFIG_LGE_USB_FACTORY
 	switch (lge_get_boot_mode()) {
 		case LGE_BOOT_MODE_QEM_56K:
 		case LGE_BOOT_MODE_QEM_130K:
@@ -113,6 +114,7 @@ int detect_factory_cable(void)
 		default:
 			break;
 	}
+#endif
 
 	return factory_cable;
 }
@@ -121,6 +123,7 @@ int detect_qem_factory_cable(void)
 {
 	int factory_cable = 0;
 
+#ifdef CONFIG_LGE_USB_FACTORY
 	switch (lge_get_boot_mode()) {
 		case LGE_BOOT_MODE_QEM_56K:
 		case LGE_BOOT_MODE_QEM_130K:
@@ -130,6 +133,7 @@ int detect_qem_factory_cable(void)
 		default:
 			break;
 	}
+#endif
 
 	return factory_cable;
 }

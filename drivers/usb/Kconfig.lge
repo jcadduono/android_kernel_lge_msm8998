@@ -8,8 +8,6 @@ config LGE_USB_GADGET
 	boolean "LGE USB Gadget Support"
 	depends on USB_GADGET
 	select LGE_USB_GADGET_MULTI_CONFIG
-	select USB_CONFIGFS_NCM
-	select USB_CONFIGFS_RNDIS
 	select LGE_USB_CONFIGFS_LAF
 	select LGE_USB_FACTORY
 	select LGE_USB_DIAG_LOCK
@@ -135,13 +133,6 @@ endif # USB_GADGET
 config LGE_USB
 	boolean "Support for Host-side LGE USB"
 	select USB
-	select LGE_USB_SUPPORT_LIST_HID
-	select LGE_USB_SUPPORT_LIST_NETWORK
-	select LGE_USB_SUPPORT_LIST_INPUT
-	select LGE_USB_SUPPORT_LIST_SOUND
-	select LGE_USB_SUPPORT_LIST_VIDEO
-	select LGE_USB_SUPPORT_LIST_STORAGE
-	select LGE_USB_SUPPORT_LIST_SERIAL
 	help
 	  Say Y here if your computer has a host-side USB port and you want
 	  to use USB devices.

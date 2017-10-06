@@ -38,7 +38,7 @@ struct nqx_platform_data {
 	const char *clk_src_name;
 };
 
-static struct of_device_id msm_match_table[] = {
+static const struct of_device_id msm_match_table[] = {
 	{.compatible = "qcom,nq-nci"},
 	{}
 };
@@ -315,10 +315,10 @@ static int nqx_standby_write(struct nqx_dev *nqx_dev,
 }
 
 /*
-	Power management of the eSE
-	NFC & eSE ON : NFC_EN high and eSE_pwr_req high.
-	NFC OFF & eSE ON : NFC_EN high and eSE_pwr_req high.
-	NFC OFF & eSE OFF : NFC_EN low and eSE_pwr_req low.
+ * Power management of the eSE
+ * NFC & eSE ON : NFC_EN high and eSE_pwr_req high.
+ * NFC OFF & eSE ON : NFC_EN high and eSE_pwr_req high.
+ * NFC OFF & eSE OFF : NFC_EN low and eSE_pwr_req low.
 */
 static int nqx_ese_pwr(struct nqx_dev *nqx_dev, unsigned long int arg)
 {
@@ -333,7 +333,8 @@ static int nqx_ese_pwr(struct nqx_dev *nqx_dev, unsigned long int arg)
 	}
 
 	if (arg == 0) {
-		/* We want to power on the eSE and to do so we need the
+		/*
+		 * We want to power on the eSE and to do so we need the
 		 * eSE_pwr_req pin and the NFC_EN pin to be high
 		 */
 		if (gpio_get_value(nqx_dev->ese_gpio)) {
@@ -437,7 +438,7 @@ static int nfc_open(struct inode *inode, struct file *filp)
 	return ret;
 }
 
-/**
+/*
  * nfc_ioctl_power_states() - power control
  * @filp:	pointer to the file descriptor
  * @arg:	mode that we want to move to
@@ -456,7 +457,8 @@ int nfc_ioctl_power_states(struct file *filp, unsigned long arg)
 	struct nqx_dev *nqx_dev = filp->private_data;
 
 	if (arg == 0) {
-		/* We are attempting a hardware reset so let us disable
+		/*
+		 * We are attempting a hardware reset so let us disable
 		 * interrupts to avoid spurious notifications to upper
 		 * layers.
 		 */
@@ -498,7 +500,8 @@ int nfc_ioctl_power_states(struct file *filp, unsigned long arg)
 		nqx_dev->nfc_ven_enabled = true;
 		msleep(20);
 	} else if (arg == 2) {
-		/* We are switching to Dowload Mode, toggle the enable pin
+		/*
+		 * We are switching to Dowload Mode, toggle the enable pin
 		 * in order to set the NFCC in the new mode
 		 */
 		if (gpio_is_valid(nqx_dev->ese_gpio)) {
@@ -550,7 +553,7 @@ static long nfc_compat_ioctl(struct file *pfile, unsigned int cmd,
 }
 #endif
 
-/**
+/*
  * nfc_ioctl_core_reset_ntf()
  * @filp:       pointer to the file descriptor
  *
@@ -747,9 +750,9 @@ done:
 }
 
 /*
-	Routine to enable clock.
-	this routine can be extended to select from multiple
-	sources based on clk_src_name.
+	* Routine to enable clock.
+	* this routine can be extended to select from multiple
+	* sources based on clk_src_name.
 */
 static int nqx_clock_select(struct nqx_dev *nqx_dev)
 {
@@ -774,7 +777,7 @@ err_clk:
 	return r;
 }
 /*
-	Routine to disable clocks
+	* Routine to disable clocks
 */
 static int nqx_clock_deselect(struct nqx_dev *nqx_dev)
 {
@@ -1067,8 +1070,9 @@ static int nqx_probe(struct i2c_client *client,
 		dev_err(&client->dev,
 			"%s: cannot register reboot notifier(err = %d)\n",
 			__func__, r);
-		/* nfcc_hw_check function not doing memory
-		   allocation so using same goto target here
+		/*
+		 * nfcc_hw_check function not doing memory
+		 * allocation so using same goto target here
 		*/
 		goto err_request_hw_check_failed;
 	}

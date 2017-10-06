@@ -34,7 +34,9 @@
 #define DM_VERITY_OPT_IGN_ZEROES	"ignore_zero_blocks"
 
 #define DM_VERITY_OPTS_MAX		(2 + DM_VERITY_OPTS_FEC)
+
 #define DM_VERITY_MEMORY_DUMP
+
 static unsigned dm_verity_prefetch_cluster = DM_VERITY_DEFAULT_PREFETCH_SIZE;
 
 module_param_named(prefetch_cluster, dm_verity_prefetch_cluster, uint, S_IRUGO | S_IWUSR);
@@ -357,7 +359,7 @@ static int verity_verify_level(struct dm_verity *v, struct dm_verity_io *io,
 					   DM_VERITY_BLOCK_TYPE_METADATA,
 					   hash_block, data, NULL) == 0)
 			aux->hash_verified = 1;
-		else{
+		else {
 #ifdef CONFIG_LGE_DM_VERITY_RECOVERY
 			u8 *ddata; /* direct read data */
 #endif
@@ -444,14 +446,15 @@ direct_read_error:
 				dm_direct_free(ddata);
 
 			dm_verity_recovery_unlock(v->bufio);
-#endif
+#endif // LGE_DM_VERITY_RECOVERY
+
 			if (verity_handle_err(v,
-					   DM_VERITY_BLOCK_TYPE_METADATA,
-					   hash_block)) {
-			r = -EIO;
-			goto release_ret_r;
+					      DM_VERITY_BLOCK_TYPE_METADATA,
+					      hash_block)) {
+				r = -EIO;
+				goto release_ret_r;
+			}
 		}
-	}
 	}
 
 #ifdef CONFIG_LGE_DM_VERITY_RECOVERY
@@ -617,8 +620,8 @@ static int verity_verify_io(struct dm_verity_io *io)
 		else if (verity_fec_decode(v, io, DM_VERITY_BLOCK_TYPE_DATA,
 					   io->block + b, NULL, &start) == 0)
 			continue;
-		else{
 #ifdef DM_VERITY_MEMORY_DUMP
+		else {
 			DMERR("data block %lu is corrupted", io->block + b);
 			DMERR("iter->sector(%lu), size(%ul), idx(%ul), bvec_done(%ul)",
 				prev_iter.bi_sector, prev_iter.bi_size,
@@ -651,11 +654,15 @@ static int verity_verify_io(struct dm_verity_io *io)
 				bio_advance_iter(bio, &prev_iter, len);
 				todo -= len;
 			} while (todo);
-#endif // DM_VERITY_MEMORY_DUMP
 			if (verity_handle_err(v, DM_VERITY_BLOCK_TYPE_DATA,
+					      io->block + b))
+				return -EIO;
+		}
+#else
+		else if (verity_handle_err(v, DM_VERITY_BLOCK_TYPE_DATA,
 					   io->block + b))
 			return -EIO;
-	}
+#endif // DM_VERITY_MEMORY_DUMP
 	}
 
 	return 0;

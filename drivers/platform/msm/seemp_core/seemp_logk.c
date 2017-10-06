@@ -160,6 +160,7 @@ void seemp_logk_kernel_end_record(void *blck)
 #else
 		blk->uid =  (current_uid());
 #endif
+
 		ringbuf_finish_writer(slogk_dev, blk);
 	}
 }

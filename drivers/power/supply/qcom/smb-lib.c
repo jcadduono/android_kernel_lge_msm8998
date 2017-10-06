@@ -3507,6 +3507,7 @@ int smblib_get_prop_usb_present(struct smb_charger *chg,
 	u8 stat;
 
 #ifdef CONFIG_LGE_PM
+#ifdef CONFIG_LGE_USB_FACTORY
 	if (lge_get_boot_mode() == LGE_BOOT_MODE_CHARGERLOGO) {
 		if (is_client_vote_enabled_locked(chg->pseudo_usb_type_votable, PD_HARD_RESET_VOTER)) {
 			val->intval = true;
@@ -3518,6 +3519,7 @@ int smblib_get_prop_usb_present(struct smb_charger *chg,
 			return 0;
 		}
 	}
+#endif
 #endif
 
 	rc = smblib_read(chg, USBIN_BASE + INT_RT_STS_OFFSET, &stat);
@@ -3545,11 +3547,13 @@ int smblib_get_prop_usb_online(struct smb_charger *chg,
 	u8 stat;
 
 #ifdef CONFIG_LGE_PM
+#ifdef CONFIG_LGE_USB_FACTORY
 	if (is_client_vote_enabled_locked(chg->pseudo_usb_type_votable, PD_HARD_RESET_VOTER)
 			&& lge_get_boot_mode() == LGE_BOOT_MODE_CHARGERLOGO) {
 		val->intval = true;
 		return rc;
 	}
+#endif
 
 	if (is_client_vote_enabled_locked(chg->pseudo_usb_type_votable, LEGACY_CABLE_VOTER)) {
 		val->intval = true;
@@ -5094,10 +5098,12 @@ static void smblib_lge_usb_removal(struct smb_charger *chg){
 	vote(chg->pseudo_usb_type_votable, FAST_HVDCP_DETECTION_VOTER, false, PSEUDO_HVDCP);
 	if (!chg->typec_present)
 		vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER, true, 100000);
+#ifdef CONFIG_LGE_USB_FACTORY
 	if (!is_client_vote_enabled_locked(chg->pseudo_usb_type_votable, LEGACY_CABLE_VOTER)
 			&& !(lge_get_boot_mode() == LGE_BOOT_MODE_CHARGERLOGO &&
 				is_client_vote_enabled_locked(chg->pseudo_usb_type_votable, PD_HARD_RESET_VOTER)))
 		chg->pseudo_usb_type = POWER_SUPPLY_TYPE_UNKNOWN;
+#endif
 	if (get_client_vote_locked(chg->pseudo_usb_type_votable, LEGACY_CABLE_VOTER) == PSEUDO_HVDCP)
 		vote(chg->pseudo_usb_type_votable, LEGACY_CABLE_VOTER, false, PSEUDO_USB_TYPE);
 	cancel_delayed_work_sync(&chg->recovery_boost_back_work);
@@ -7386,12 +7392,16 @@ int smblib_init(struct smb_charger *chg)
 #endif
 #ifdef CONFIG_IDTP9223_CHARGER
 	INIT_WORK(&chg->idtp9223_work, idtp9223_work);
+#endif
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_CHARGING_CONTROLLER
 	INIT_DELAYED_WORK(&chg->dc_lcd_current_work, dc_lcd_current_work);
 #endif
 #ifdef CONFIG_LGE_PM
+#ifdef CONFIG_LGE_USB_FACTORY
 	if (lge_get_boot_mode() == LGE_BOOT_MODE_CHARGERLOGO || lge_get_boot_mode() == LGE_BOOT_MODE_NORMAL)
 		chg->is_normal_bootmode = true;
 	else
+#endif
 		chg->is_normal_bootmode = false;
 
 	chg->usbin_ov_sts = false;

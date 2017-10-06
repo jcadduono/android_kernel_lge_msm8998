@@ -36,7 +36,7 @@
 #include "msm_isp40.h"
 #include "msm_isp32.h"
 
-#ifdef CONFIG_LGE_PM
+#ifdef CONFIG_LGE_USB_FACTORY
 #include <soc/qcom/lge/board_lge.h>
 #endif
 
@@ -567,7 +567,7 @@ int vfe_hw_probe(struct platform_device *pdev)
 	const struct of_device_id *match_dev;
 	int rc = 0;
 
-#ifdef CONFIG_LGE_PM
+#ifdef CONFIG_LGE_USB_FACTORY
 	/* In chargerlogo boot, this device does not release bimc_msmbus_clk.
 	   This is not used in chargerlogo,
 	   so we block probing this device when chargerlogo boot */

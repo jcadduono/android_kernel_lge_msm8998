@@ -1707,13 +1707,8 @@ static int mmc_blk_cmd_recovery(struct mmc_card *card, struct request *req,
 		mmc_retune_recheck(card->host);
 
 		prev_cmd_status_valid = false;
-		#ifdef CONFIG_MACH_LGE
-		pr_err("[LGE][MMC]%s: error %d sending status command, %sing, cd-gpio:%d\n",
-		       req->rq_disk->disk_name, err, retry ? "retry" : "abort", mmc_gpio_get_cd(card->host));
-		#else
 		pr_err("%s: error %d sending status command, %sing\n",
 		       req->rq_disk->disk_name, err, retry ? "retry" : "abort");
-		#endif
 	}
 
 	/* We couldn't get a response from the card.  Give up. */

@@ -3073,10 +3073,12 @@ static int ftm4_upgrade(struct device *dev)
 		return -EPERM;
 	}
 
+#ifdef CONFIG_LGE_USB_FACTORY
 	if (lge_get_laf_mode() == LGE_LAF_MODE_LAF) {
 		TOUCH_I("%s: skip fw_upgrade - LAF MODE\n", __func__);
 		return -EPERM;
 	}
+#endif
 
 	if (lge_check_recoveryboot()) {
 		TOUCH_I("%s: skip fw_upgrade - RECOVERY MODE\n", __func__);
