@@ -112,3 +112,6 @@ all.config
 
 # Kdevelop4
 *.kdev4
+
+# build output folder
+/build/
