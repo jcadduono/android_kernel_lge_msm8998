@@ -16,5 +16,12 @@
 	status = "okay";
 };
 
+&i2c_1 { /* BLSP1 QUP1 */
+	idtp9223-charger@61 {               /* Slave driver and slave Address */
+		idt,fod-register = <0x78>;
+		idt,fod-value = <0xA7>;
+	};
+};
+
 &soc {
 };

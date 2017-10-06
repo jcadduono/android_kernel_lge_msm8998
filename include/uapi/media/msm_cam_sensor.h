@@ -230,6 +230,10 @@ struct camera_vreg_t {
 	uint32_t delay;
 	const char *custom_vreg_name;
 	enum camera_vreg_type type;
+
+/* #ifdef CONFIG_MACH_LGE */
+	struct regulator *bob_vreg;
+/* #endif CONFIG_MACH_LGE */
 };
 
 struct sensorb_cfg_data {

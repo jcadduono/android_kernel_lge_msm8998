@@ -2325,14 +2325,6 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 
 	cancel_work_sync(&ctx->pp_done_work);
 
-#if defined(CONFIG_LGE_DISPLAY_AMBIENT_SUPPORTED)
-#if defined(CONFIG_LGE_DISPLAY_CHANGE_PARTIAL_AREA_IN_KICKOFF)
-#if defined(CONFIG_LGE_DISPLAY_BIST_MODE)
-	flush_delayed_work(&ctx->bist_done_dw);
-#endif
-#endif
-#endif
-
 	/* signal any pending ping pong done events */
 	while (atomic_add_unless(&ctx->pp_done_cnt, -1, 0))
 		mdss_mdp_ctl_notify(ctx->ctl, MDP_NOTIFY_FRAME_DONE);

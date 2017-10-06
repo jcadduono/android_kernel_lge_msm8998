@@ -44,6 +44,7 @@ config MACH_MSM8998_JOAN
 	bool "MSM8998 JOAN"
 	depends on ARCH_MSM8998
 	select MACH_LGE
+	select LGE_DM_VERITY_RECOVERY
 	help
 	  Support for the Qualcomm MSM8998 JOAN device.
 
@@ -245,6 +246,14 @@ config LGE_PSTORE_BACKUP
 	depends on MACH_LGE
 	help
 	  Ramoops region is backed up to pstore partition
+
+config LGE_DM_VERITY_RECOVERY
+	tristate "Support dm verity corrupt recovery"
+	default n
+	depends on MACH_LGE
+	help
+	  Sometimes, dm-bufio has invalid data. If data is corrupted,
+	  try to recover data.
 
 endmenu
 

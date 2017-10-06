@@ -21,19 +21,19 @@
 #include "msm_ois.h"
 #include "msm_ois_i2c.h"
 
-#define LAST_UPDATE "17-07-03, 13M LGIT OLAF OIS bu24235"
+#define LAST_UPDATE "17-07-21, 13M LGIT OLAF OIS bu24235"
 
 /*If changed FW, change below FW bin and Checksum information*/
 #define JOAN_0616_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_0_BIN_1 "bu24235_dl_program_Joan_LGITAct_ICG1020S_rev0_S_data1.bin"
 #define JOAN_0616_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_0_BIN_2 "bu24235_dl_program_Joan_LGITAct_ICG1020S_rev0_S_data2.bin"
 #define JOAN_0630_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_3_BIN_1 "bu24235_dl_program_Joan_LGITAct_ICG1020S_rev3_S_data1.bin"
 #define JOAN_0630_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_3_BIN_2 "bu24235_dl_program_Joan_LGITAct_ICG1020S_rev3_S_data2.bin"
-#define JOAN_0703_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_4_BIN_1 "bu24235_dl_program_Joan_LGITAct_ICG1020S_rev4_S_data1.bin"
-#define JOAN_0703_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_4_BIN_2 "bu24235_dl_program_Joan_LGITAct_ICG1020S_rev4_S_data2.bin"
+#define JOAN_0719_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_5_BIN_1 "bu24235_dl_program_Joan_LGITAct_ICG1020S_rev5_S_data1.bin"
+#define JOAN_0719_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_5_BIN_2 "bu24235_dl_program_Joan_LGITAct_ICG1020S_rev5_S_data2.bin"
 
 #define JOAN_0616_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_0_CHECKSUM	0x00014555
 #define JOAN_0630_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_3_CHECKSUM	0x00014AB9
-#define JOAN_0703_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_4_CHECKSUM	0x00014650
+#define JOAN_0719_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_5_CHECKSUM	0x00014523
 
 /*If changed FW, change above FW bin and Checksum information*/
 
@@ -55,7 +55,6 @@
 
 #define GYRO_SCALE_FACTOR 175
 #define HALL_SCALE_FACTOR 8192
-#define GYRO_GAIN_MTM 3800
 #define GYRO_GAIN_LGIT 6900
 
 #define NUM_GYRO_SAMLPING (10)
@@ -114,11 +113,11 @@ static struct ois_i2c_bin_list JOAN_0630_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_3_BIN_D
 	.checksum = JOAN_0630_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_3_CHECKSUM
 };
 
-static struct ois_i2c_bin_list JOAN_0703_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_4_BIN_DATA = {
+static struct ois_i2c_bin_list JOAN_0719_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_5_BIN_DATA = {
 	.files = 2,
 	.entries = {
 		{
-			.filename = JOAN_0703_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_4_BIN_1,
+			.filename = JOAN_0719_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_5_BIN_1,
 			.filesize = 0x0338, //824byte
 			.blocks = 1,
 			.addrs = {
@@ -126,7 +125,7 @@ static struct ois_i2c_bin_list JOAN_0703_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_4_BIN_D
 			}
 		},
 		{
-			.filename = JOAN_0703_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_4_BIN_2,
+			.filename = JOAN_0719_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_5_BIN_2,
 			.filesize = 0x01C0,
 			.blocks = 1,
 			.addrs = {
@@ -134,7 +133,7 @@ static struct ois_i2c_bin_list JOAN_0703_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_4_BIN_D
 			}
 		},
 	},
-	.checksum = JOAN_0703_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_4_CHECKSUM
+	.checksum = JOAN_0719_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_5_CHECKSUM
 };
 
 /*If changed FW, change above FW bin and Checksum information*/
@@ -492,12 +491,12 @@ int32_t lgit_imx351_init_set_rohm_ois(struct msm_ois_ctrl_t *o_ctrl,
 			rc = lgit_imx351_rohm_ois_bin_download(JOAN_0616_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_0_BIN_DATA);
 			break;
 		case 0x0101:
-			pr_err("[CHECK] %s: JOAN_0630_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_3_BIN_DATA, 3s\n", __func__);
+			pr_err("[CHECK] %s: JOAN_0630_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_3_BIN_DATA, 1M_3S\n", __func__);
 			rc = lgit_imx351_rohm_ois_bin_download(JOAN_0630_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_3_BIN_DATA);
 			break;
 		case 0x0301:
-			pr_err("[CHECK] %s: JOAN_0703_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_4_BIN_DATA, 4s\n", __func__);
-			rc = lgit_imx351_rohm_ois_bin_download(JOAN_0703_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_4_BIN_DATA);
+			pr_err("[CHECK] %s: JOAN_0719_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_5_BIN_DATA, 3M_5S\n", __func__);
+			rc = lgit_imx351_rohm_ois_bin_download(JOAN_0719_LGIT_OLAF_ACTUATOR_FIRMWARE_VER_5_BIN_DATA);
 			break;
 		default:
 			pr_err("[CHECK] %s: Apply Default : No Download BIN_DATA cal_ver:0x%x\n", __func__, cal_ver);
@@ -766,13 +765,13 @@ int32_t lgit_imx351_rohm_ois_pwm_mode(struct msm_ois_ctrl_t *o_ctrl,
 			switch (mode) {
 				case OIS_IMG_SENSOR_REG_A:
 					/* RES_0(Reg_A1) Full-resolution 16M (4656x3492), 30fps */
-					pr_err("%s OIS_IMG_SENSOR_REG_A(Res 0)_h2\n", __func__);
+					pr_err("%s OIS_IMG_SENSOR_REG_A(Res 0)_h4\n", __func__);
 					RegWriteA(0x60D0, 0x00);
 					RegWriteA(0x60D4, 0x07);
 					RegWriteA(0x60D1, 0x01);
-					RegWriteA(0x60D2, 0x24);
-					RegWriteA(0x60D3, 0x01);
-					RegWriteA(0x60D4, 0x08);
+					RegWriteA(0x60D2, 0x48);
+					RegWriteA(0x60D3, 0x00);
+					RegWriteA(0x60D4, 0x0A);
 					RegWriteA(0x60D5, 0x00);
 					RegWriteA(0x60D0, 0x01);
 					break;

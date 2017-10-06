@@ -1462,6 +1462,13 @@ int msm_camera_power_up(struct msm_camera_power_ctrl_t *ctrl,
 	if (ctrl->gpio_conf->cam_gpiomux_conf_tbl != NULL)
 		pr_err("%s:%d mux install\n", __func__, __LINE__);
 
+#ifdef CONFIG_MACH_LGE
+	if(ctrl->cam_vreg->bob_vreg) {
+		pr_err("__debug set load 2000000\n");
+		regulator_set_load(ctrl->cam_vreg->bob_vreg, 2000000);
+	}
+#endif
+
 	ret = msm_camera_pinctrl_init(&(ctrl->pinctrl_info), ctrl->dev);
 	if (ret < 0) {
 		pr_err("%s:%d Initialization of pinctrl failed\n",
@@ -1684,6 +1691,13 @@ int msm_camera_power_down(struct msm_camera_power_ctrl_t *ctrl,
 	if (device_type == MSM_CAMERA_PLATFORM_DEVICE)
 		sensor_i2c_client->i2c_func_tbl->i2c_util(
 			sensor_i2c_client, MSM_CCI_RELEASE);
+
+#ifdef CONFIG_MACH_LGE
+	if(ctrl->cam_vreg->bob_vreg) {
+		pr_err("__debug set load 0\n");
+		regulator_set_load(ctrl->cam_vreg->bob_vreg, 0);
+	}
+#endif
 
 	for (index = 0; index < ctrl->power_down_setting_size; index++) {
 		CDBG("%s index %d\n", __func__, index);

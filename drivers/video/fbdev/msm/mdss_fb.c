@@ -330,15 +330,6 @@ static void mdss_fb_set_bl_brightness(struct led_classdev *led_cdev,
 	struct tm tmresult;
 	int create_debugfs = 0;
 #endif
-#if defined(CONFIG_LGE_DISPLAY_AMBIENT_SUPPORTED)
-	bool isdoze;
-	int panel_state;
-
-	panel_state = mfd->panel_info->panel_power_state;
-	isdoze = (((panel_state == MDSS_PANEL_POWER_LP1) ||
-			(panel_state == MDSS_PANEL_POWER_LP2)) ? true : false);
-#endif
-
 	if (mfd->boot_notification_led) {
 		led_trigger_event(mfd->boot_notification_led, 0);
 		mfd->boot_notification_led = NULL;
@@ -356,9 +347,6 @@ static void mdss_fb_set_bl_brightness(struct led_classdev *led_cdev,
 		bl_lvl = 1;
 
 	if (!IS_CALIB_MODE_BL(mfd) &&
-#if defined(CONFIG_LGE_DISPLAY_AMBIENT_SUPPORTED)
-			(!isdoze) &&
-#endif
 			(!mfd->ext_bl_ctrl || !value || !mfd->bl_level)) {
 		mutex_lock(&mfd->bl_lock);
 		mdss_fb_set_backlight(mfd, bl_lvl);
@@ -1376,6 +1364,7 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	mfd->unset_bl_level = U32_MAX;
 #if defined(CONFIG_LGE_DISPLAY_AMBIENT_SUPPORTED)
 	mfd->unset_bl_level_ex = U32_MAX;
+	mfd->allow_bl_update_ex = false;
 #endif
 	mfd->bl_extn_level = -1;
 	mfd->bl_level_usr = backlight_led.brightness;
@@ -1841,7 +1830,12 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 		return;
 #endif
 
-	if ((((mdss_fb_is_power_off(mfd) && mfd->dcm_state != DCM_ENTER)
+	if (((
+#if defined(CONFIG_LGE_DISPLAY_AMBIENT_SUPPORTED)
+		(!mdss_fb_is_power_on_interactive(mfd) && mfd->dcm_state != DCM_ENTER)
+#else
+		(mdss_fb_is_power_off(mfd) && mfd->dcm_state != DCM_ENTER)
+#endif
 		|| !mfd->allow_bl_update) && !IS_CALIB_MODE_BL(mfd)) ||
 		mfd->panel_info->cont_splash_enabled) {
 		mfd->unset_bl_level = bkl_lvl;
@@ -1983,11 +1977,35 @@ static int mdss_fb_blank_blank(struct msm_fb_data_type *mfd,
 	int ret = 0;
 	int cur_power_state, current_bl;
 
+#if defined(CONFIG_LGE_DISPLAY_VIDEO_ENHANCEMENT)
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	struct lge_mdss_dsi_ctrl_pdata *lge_ctrl_pdata = NULL;
+#endif
+
 	if (!mfd)
 		return -EINVAL;
 
 	if (!mdss_fb_is_power_on(mfd) || !mfd->mdp.off_fnc)
 		return 0;
+
+#if defined(CONFIG_LGE_DISPLAY_VIDEO_ENHANCEMENT)
+	if(mfd->index == 0) {
+		ctrl_pdata = container_of(dev_get_platdata(&mfd->pdev->dev),
+				struct mdss_dsi_ctrl_pdata, panel_data);
+		if (ctrl_pdata == NULL) {
+			pr_err("Invalid ctrl_pdata\n");
+			return -EINVAL;
+		}
+
+		lge_ctrl_pdata = ctrl_pdata->lge_ctrl_pdata;
+		if (lge_ctrl_pdata == NULL) {
+			pr_err("Invalid lge_ctrl_pdata\n");
+			return -EINVAL;
+		}
+
+		cancel_delayed_work_sync(&lge_ctrl_pdata->bc_dim_work);
+	}
+#endif
 
 	cur_power_state = mfd->panel_power_state;
 
@@ -2022,8 +2040,22 @@ static int mdss_fb_blank_blank(struct msm_fb_data_type *mfd,
 		mdss_fb_set_backlight(mfd, 0);
 		mfd->allow_bl_update = false;
 		mfd->unset_bl_level = current_bl;
+#if defined(CONFIG_LGE_DISPLAY_AMBIENT_SUPPORTED)
+		mfd->allow_bl_update_ex = false;
+		mfd->unset_bl_level_ex = current_bl;
+#endif
 		mutex_unlock(&mfd->bl_lock);
 	}
+
+#if defined(CONFIG_LGE_DISPLAY_AMBIENT_SUPPORTED)
+	if (mdss_panel_is_power_on_lp(req_power_state)) {
+		mutex_lock(&mfd->bl_lock);
+		mfd->unset_bl_level = U32_MAX;
+		mfd->allow_bl_update = false;
+		mutex_unlock(&mfd->bl_lock);
+	}
+#endif
+
 	mfd->panel_power_state = req_power_state;
 
 	ret = mfd->mdp.off_fnc(mfd);
@@ -2182,7 +2214,10 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	case FB_BLANK_UNBLANK:
 		pr_debug("unblank called. cur pwr state=%d\n", cur_power_state);
 #if defined(CONFIG_LGE_DISPLAY_AMBIENT_SUPPORTED)
+		mutex_lock(&mfd->bl_lock);
 		mfd->unset_bl_level_ex = U32_MAX;
+		mfd->allow_bl_update_ex = false;
+		mutex_unlock(&mfd->bl_lock);
 #endif
 		ret = mdss_fb_blank_unblank(mfd);
 		break;
@@ -2204,7 +2239,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		 * If low power mode is requested when panel is already off,
 		 * then first unblank the panel before entering low power mode
 		 */
-#if defined(CONFIG_LGE_DISPLAY_COMMON)
+#if defined(CONFIG_LGE_DISPLAY_AMBIENT_SUPPORTED)
 		mfd->unset_bl_level = U32_MAX;
 #endif
 		if (mdss_fb_is_power_off(mfd) && mfd->mdp.on_fnc) {

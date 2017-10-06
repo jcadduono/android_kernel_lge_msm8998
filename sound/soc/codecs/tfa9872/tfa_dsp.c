@@ -4131,6 +4131,11 @@ enum tfa_error tfa_start(int next_profile, int *vstep)
 			err = tfa_cont_write_profile(dev, next_profile, vstep[dev]);
 			if (err!=TFA98XX_ERROR_OK)
 				goto error_exit;
+			if (handles_local[dev].is_cold == 0) {
+				pr_info("%s: flush buffer in blob, in warm start\n",
+					__func__);
+				err = tfa_tib_dsp_msgblob(dev, -2, NULL);
+			}
 		}
 
 		/* If the profile contains the .standby suffix go to powerdown

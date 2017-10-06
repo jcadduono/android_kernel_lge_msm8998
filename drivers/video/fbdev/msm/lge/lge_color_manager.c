@@ -471,10 +471,19 @@ static ssize_t color_manager_status_set(struct device *dev,
 		return -EINVAL;
 	}
 
+	if (!lge_ctrl_pdata->color_manager_default_status) {
+		pr_info("Color manager is disabled as default. Ignore color manager status control.\n");
+		return ret;
+	}
+
 	sscanf(buf, "%d", &input);
 
 	lge_ctrl_pdata->color_manager_status = input & 0x01;
 	lge_display_control_store(ctrl, true);
+
+	if (lge_ctrl_pdata->color_manager_status)
+		lge_mdss_dsi_send_dcs_cmds_by_cmd_name(ctrl, lge_ctrl_pdata->color_modes_cmds, CM_MAX,
+						color_management_command_set[lge_ctrl_pdata->color_manager_mode]);
 
 	pr_info("color_manager_status %d \n", lge_ctrl_pdata->color_manager_status);
 	return ret;
@@ -592,6 +601,8 @@ static int mdss_dsi_parse_color_manager_modes(struct device_node *np,
 void lge_color_manager_parse_dt(struct device_node *np, struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	struct lge_mdss_dsi_ctrl_pdata *lge_ctrl_pdata = NULL;
+	u32 tmp = 0;
+	int rc = 0;
 
 	if (ctrl_pdata == NULL) {
 		pr_err("Invalid input\n");
@@ -612,4 +623,12 @@ void lge_color_manager_parse_dt(struct device_node *np, struct mdss_dsi_ctrl_pda
 
 	lge_mdss_dsi_parse_dcs_cmds_by_name_array(np, &lge_ctrl_pdata->color_modes_cmds,
 					color_management_command_set, CM_MAX);
+
+	rc = of_property_read_u32(np, "lge,color-manager-default-status", &tmp);
+	if (rc) {
+		pr_debug("fail to parse lge,color-manager-default-status\n");
+		lge_ctrl_pdata->color_manager_default_status = false;
+	} else {
+		lge_ctrl_pdata->color_manager_default_status = (tmp > 0) ? true : false;
+	}
 }

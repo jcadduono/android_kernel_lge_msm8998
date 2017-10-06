@@ -117,7 +117,7 @@ module_param_named(
 irqreturn_t smb138x_handle_slave_chg_state_change(int irq, void *data)
 {
 #ifdef CONFIG_LGE_PM
-	pr_info("irq : chg_state_change\n");
+	pr_debug("irq : chg_state_change\n");
 #else
 	struct smb_irq_data *irq_data = data;
 	struct smb138x *chip = irq_data->parent_data;
@@ -581,7 +581,7 @@ int smb138x_get_prop_slave_status(struct smb_charger *chg,
 
 static enum power_supply_property smb138x_parallel_props[] = {
 #ifdef CONFIG_LGE_PM
-	POWER_SUPPLY_PROP_STATUS_PARALLEL,
+	POWER_SUPPLY_PROP_PARALLEL_STATUS,
 #endif
 	POWER_SUPPLY_PROP_CHARGE_TYPE,
 	POWER_SUPPLY_PROP_CHARGING_ENABLED,
@@ -611,7 +611,7 @@ static int smb138x_parallel_get_prop(struct power_supply *psy,
 
 	switch (prop) {
 #ifdef CONFIG_LGE_PM
-	case POWER_SUPPLY_PROP_STATUS_PARALLEL:
+	case POWER_SUPPLY_PROP_PARALLEL_STATUS:
 		rc = smblib_read(chg, BATTERY_CHARGER_STATUS_5_REG,
 				&temp);
 		if (rc >= 0 && (temp & CHARGING_ENABLE_BIT)) {

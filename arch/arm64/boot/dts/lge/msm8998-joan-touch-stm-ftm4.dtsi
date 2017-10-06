@@ -54,7 +54,7 @@
 		hide_coordinate = <1>;
 
 		/* Firmware */
-		fw_image = "touch/joan/L0S59P1_0_75.ftb";
+		fw_image = "touch/joan/L0S59P1_1_08.ftb";
 		panel_spec = "touch/joan/joan_limit.txt";
 		panel_spec_mfts_folder = "touch/joan/joan_limit_mfts.txt";
 	};
@@ -80,6 +80,6 @@
 		stm,vdd-gpio = <&tlmm 85 0x0>;
 		stm,vio-gpio = <&tlmm 86 0x0>;
 
-		stm,firmware_name = "touch/joan/L0S59P1_0_75.ftb";
+		stm,firmware_name = "touch/joan/L0S59P1_1_08.ftb";
 	};
 };

@@ -334,6 +334,11 @@ static int smb2_parse_dt(struct smb2 *chip)
 		pr_err("Unable to sbu gpio %d.\n", chg->smb_bat_en);
 	}
 	pr_info("Parallel charger batfet gpio %d\n", chg->smb_bat_en);
+
+	rc = of_property_read_u32(node,
+			"lge,maximum-icl-ua", &chg->maximum_icl_ua);
+	if (rc < 0)
+		chg->maximum_icl_ua = 0;
 #endif
 
 #ifdef CONFIG_LGE_PM_STEP_CHARGING
@@ -596,6 +601,9 @@ static int smb2_usb_get_prop(struct power_supply *psy,
 	struct smb2 *chip = power_supply_get_drvdata(psy);
 	struct smb_charger *chg = &chip->chg;
 	int rc = 0;
+#ifdef CONFIG_LGE_PM
+	static int pre_type;
+#endif
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_PRESENT:
@@ -641,6 +649,12 @@ static int smb2_usb_get_prop(struct power_supply *psy,
 		if (!chg->checking_pd_active && val->intval == POWER_SUPPLY_TYPE_USB_FLOATED)
 			val->intval = POWER_SUPPLY_TYPE_USB_DCP;
 #endif
+		if (pre_type != val->intval) {
+			pre_type = val->intval;
+			pr_err("PMI: smb2_usb_get_prop type - %s(%d) real(%d)\n",
+				get_effective_client_locked(chg->pseudo_usb_type_votable),
+				val->intval, chg->real_charger_type);
+		}
 #else
 		val->intval = POWER_SUPPLY_TYPE_USB_PD;
 #endif
@@ -1282,8 +1296,17 @@ static int smb2_batt_get_prop(struct power_supply *psy,
 		rc = smblib_get_prop_batt_health(chg, val);
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
+#ifdef CONFIG_LGE_PM
+		if (chg->no_batt_boot) {
+			val->intval = 0;
+		} else {
+		rc = smblib_get_prop_batt_present(chg, val);
+		}
+		break;
+#else
 		rc = smblib_get_prop_batt_present(chg, val);
 		break;
+#endif
 	case POWER_SUPPLY_PROP_INPUT_SUSPEND:
 		rc = smblib_get_prop_input_suspend(chg, val);
 		break;
@@ -2071,7 +2094,7 @@ static int smb2_init_hw(struct smb2 *chip)
 	}
 
 #ifdef CONFIG_LGE_PM
-	rc = smblib_get_prop_batt_present(chg, &val);
+	rc = smblib_get_prop_batt_present_smem(chg, &val);
 	if (rc < 0) {
 		pr_err("Couldn't get batt present rc=%d\n", rc);
 		batt_present = 1;
@@ -2080,20 +2103,21 @@ static int smb2_init_hw(struct smb2 *chip)
 		batt_present = val.intval;
 
 	factory_cable_boot = lge_get_factory_cable();
+	pr_info("factory_cable = %d, present = %d, apsd_status = 0x%x\n",
+			factory_cable_boot, batt_present, stat);
 
 	if (batt_present == 0 &&
-		factory_cable_boot != LGE_FACTORY_CABLE_NONE) {
+		factory_cable_boot == LGE_FACTORY_CABLE_910K) {
 		chg->no_batt_boot = true;
 		chg->fake_capacity = 60;
-		pr_info("factory_cable = %d, present = %d, apsd_status = 0x%x\n",
-				factory_cable_boot, batt_present, stat);
 
 		/* Use SW to control Input Current Limit after APSD is completed */
 		rc = smblib_masked_write(chg, USBIN_LOAD_CFG_REG,
 			ICL_OVERRIDE_AFTER_APSD_BIT, ICL_OVERRIDE_AFTER_APSD_BIT);
 		if (rc < 0)
 			pr_err("Couldn't enable SW control ICL rc=%d\n", rc);
-		smblib_update_icl_override(chg);
+		smblib_update_icl_override(chg, true);
+		vote(chg->chg_disable_votable, NO_BATTERY_VOTER, true, 0);
 	} else {
 		chg->no_batt_boot = false;
 		smblib_rerun_apsd_if_required(chg);
@@ -2153,6 +2177,7 @@ static int smb2_init_hw(struct smb2 *chip)
 			chg->micro_usb_mode, 0);
 #ifdef CONFIG_LGE_PM
 	vote(chg->pseudo_usb_type_votable, DEFAULT_VOTER, true, 0);
+	vote(chg->usb_icl_votable, HW_ICL_VOTER, true, chg->maximum_icl_ua);
 #endif
 
 	/*
@@ -2556,8 +2581,8 @@ static struct smb_irq_info smb2_irqs[] = {
 	},
 	[USBIN_OV_IRQ] = {
 		.name		= "usbin-ov",
-#ifdef CONFIG_LGE_PM_DEBUG
-		.handler	= smblib_handle_lge_debug,
+#ifdef CONFIG_LGE_PM
+		.handler	= smblib_handle_usbin_ov,
 #else
 		.handler	= smblib_handle_debug,
 #endif
@@ -3192,6 +3217,30 @@ static void smb2_shutdown(struct platform_device *pdev)
 				 AUTO_SRC_DETECT_BIT, AUTO_SRC_DETECT_BIT);
 }
 
+#ifdef CONFIG_LGE_PM_DEBUG
+static int smb2_suspend(struct device *dev)
+{
+	struct smb_charger *chg = dev_get_drvdata(dev);
+
+	cancel_delayed_work(&chg->charging_inform_work);
+	return 0;
+}
+
+static int smb2_resume(struct device *dev)
+{
+	struct smb_charger *chg = dev_get_drvdata(dev);
+
+	schedule_delayed_work(&chg->charging_inform_work,
+			round_jiffies_relative(msecs_to_jiffies(CHARGING_INFORM_NORMAL_TIME)));
+	return 0;
+}
+
+static const struct dev_pm_ops smb2_pm_ops = {
+	.suspend = smb2_suspend,
+	.resume  = smb2_resume,
+};
+#endif
+
 static const struct of_device_id match_table[] = {
 	{ .compatible = "qcom,qpnp-smb2", },
 	{ },
@@ -3202,6 +3251,9 @@ static struct platform_driver smb2_driver = {
 		.name		= "qcom,qpnp-smb2",
 		.owner		= THIS_MODULE,
 		.of_match_table	= match_table,
+#ifdef CONFIG_LGE_PM_DEBUG
+		.pm 	= &smb2_pm_ops,
+#endif
 	},
 	.probe		= smb2_probe,
 	.remove		= smb2_remove,

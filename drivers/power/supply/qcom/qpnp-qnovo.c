@@ -103,6 +103,16 @@
 #define ERR_CHARGING_DISABLED		BIT(1)
 #define ERR_JEITA_HARD_CONDITION	BIT(0)
 
+#define DCIN_AICL_OPTIONS_CFG_REG		0x1480
+#define SUSPEND_ON_COLLAPSE_DCIN_BIT		BIT(7)
+#define DCIN_AICL_HDC_EN_BIT			BIT(6)
+#define DCIN_AICL_START_AT_MAX_BIT		BIT(5)
+#define DCIN_AICL_RERUN_EN_BIT			BIT(4)
+#define DCIN_AICL_ADC_EN_BIT			BIT(3)
+#define DCIN_AICL_EN_BIT			BIT(2)
+#define DCIN_HV_COLLAPSE_RESPONSE_BIT		BIT(1)
+#define DCIN_LV_COLLAPSE_RESPONSE_BIT		BIT(0)
+
 #define QNOVO_TR_IADC_OFFSET_0	0xF1
 #define QNOVO_TR_IADC_OFFSET_1	0xF2
 
@@ -118,6 +128,7 @@
 #define QNOVO_ERR_VOTER		"qnovo_err_voter"
 #define INPUT_PB_VOTER		"input_pb_voter"
 #define PT_RESTART_VOTER	"PT_RESTART_VOTER"
+#define USER_VOTER		"user_voter"
 #else
 #define USER_VOTER		"user_voter"
 #define OK_TO_QNOVO_VOTER	"ok_to_qnovo_voter"
@@ -152,6 +163,8 @@ struct qnovo {
 	struct power_supply	*batt_psy;
 #ifdef CONFIG_LGE_PM
 	struct power_supply	*bms_psy;
+	struct power_supply	*usb_psy;
+	struct power_supply	*dc_psy;
 #endif
 	struct work_struct	status_change_work;
 #ifdef CONFIG_LGE_PM
@@ -262,6 +275,28 @@ static bool is_batt_available(struct qnovo *chip)
 }
 
 #ifdef CONFIG_LGE_PM
+static bool is_usb_available(struct qnovo *chip)
+{
+	if (!chip->usb_psy)
+		chip->usb_psy = power_supply_get_by_name("usb");
+
+	if (!chip->usb_psy)
+		return false;
+
+	return true;
+}
+
+static bool is_dc_available(struct qnovo *chip)
+{
+	if (!chip->dc_psy)
+		chip->dc_psy = power_supply_get_by_name("dc");
+
+	if (!chip->dc_psy)
+		return false;
+
+	return true;
+}
+
 static bool is_fg_available(struct qnovo *chip)
 {
 	if (!chip->bms_psy)
@@ -271,6 +306,55 @@ static bool is_fg_available(struct qnovo *chip)
 		return false;
 
 	return true;
+}
+
+static int update_input_present(struct qnovo *chip)
+{
+	union power_supply_propval val;
+	bool input_present;
+	int rc;
+
+	rc = power_supply_get_property(chip->usb_psy,
+		POWER_SUPPLY_PROP_PRESENT, &val);
+
+	input_present =  rc < 0 ? false : val.intval;
+
+	if (input_present ^ chip->usb_present) {
+		chip->usb_present = input_present;
+		chip->input_changed = true;
+	}
+
+	rc = power_supply_get_property(chip->dc_psy,
+		POWER_SUPPLY_PROP_PRESENT, &val);
+
+	input_present =  rc < 0 ? false : val.intval;
+
+	if (input_present ^ chip->dc_present) {
+		chip->dc_present = input_present;
+		chip->input_changed = true;
+	}
+
+	return 0;
+}
+
+static bool is_usb_present(struct qnovo *chip)
+{
+	if (is_usb_available(chip) && is_dc_available(chip))
+		update_input_present(chip);
+
+	if (chip->usb_present)
+		return true;
+	return false;
+}
+
+static bool is_dc_present(struct qnovo *chip)
+{
+	if (is_usb_available(chip) && is_dc_available(chip))
+		update_input_present(chip);
+
+	if (chip->dc_present && !chip->usb_present)
+		return true;
+	return false;
 }
 #endif
 
@@ -316,12 +400,10 @@ static int qnovo_disable_cb(struct votable *votable, void *data, int disable,
 #endif
 {
 	struct qnovo *chip = data;
-#ifndef CONFIG_LGE_PM
 	union power_supply_propval pval = {0};
-#endif
 	int rc;
 
-#ifndef CONFIG_LGE_PM
+#ifdef CONFIG_LGE_PM
 	if (!is_batt_available(chip))
 		return -EINVAL;
 
@@ -335,20 +417,19 @@ static int qnovo_disable_cb(struct votable *votable, void *data, int disable,
 	}
 #endif
 
-#ifndef CONFIG_LGE_PM
+	rc = qnovo_batt_psy_update(chip, disable);
+
+#ifdef CONFIG_LGE_PM
+	chip->ok_to_qnovo = !disable;
+
 	/*
 	 * fg must be available for enable FG_AVAILABLE_VOTER
 	 * won't enable it otherwise
 	 */
-
-	if (is_fg_available(chip))
+	if (is_fg_available(chip) && chip->ok_to_qnovo)
 		rc = power_supply_set_property(chip->bms_psy,
 				POWER_SUPPLY_PROP_CHARGE_QNOVO_ENABLE,
 				&pval);
-#endif
-	rc = qnovo_batt_psy_update(chip, disable);
-#ifdef CONFIG_LGE_PM
-	chip->ok_to_qnovo = !disable;
 	kobject_uevent(&chip->dev->kobj, KOBJ_CHANGE);
 #endif
 	return rc;
@@ -815,6 +896,7 @@ static ssize_t qnovo_enable_store(struct class *c, struct class_attribute *attr,
 		pr_err("Couldn't set prop qnovo_enable rc = %d\n", rc);
 		return -EINVAL;
 	}
+	vote(chip->disable_votable, USER_VOTER, !val, 0);
 #else
 	vote(chip->disable_votable, USER_VOTER, !val, 0);
 #endif
@@ -870,6 +952,10 @@ static ssize_t pt_enable_store(struct class *c, struct class_attribute *attr,
 			pr_info("qni:PT_RESTART enable failed - pt_enable = 1.\n");
 			return -EINVAL;
 		}
+	}
+	else {
+		cancel_work_sync(&chip->ptrain_restart_work);
+		vote(chip->qnovo_awake_votable, PT_RESTART_VOTER, false, 0);
 	}
 
 	if (chip->pt_restart_flag)
@@ -1330,7 +1416,7 @@ static int qnovo_update_status(struct qnovo *chip)
 
 	rc = qnovo_read(chip, QNOVO_ERROR_STS2, &val, 1);
 	if (rc < 0) {
-		pr_err("Couldn't read error sts rc = %d\n", rc);
+		pr_info("qni: <><> Couldn't read error_sts2 rc = %d\n", rc);
 #ifdef CONFIG_LGE_PM
 		err_status = true;
 #else
@@ -1343,12 +1429,30 @@ static int qnovo_update_status(struct qnovo *chip)
 		 */
 #ifdef CONFIG_LGE_PM
 		err_status = (val == ERR_CV_MODE || val == 0) ? false : true;
+
+		if (is_dc_present(chip)) {
+			err_status = true;
+			pr_info("qni:%s dc is presented. qnovo is disabled.\n",	__func__);
+		}
 #else
 		ok_to_qnovo = (val == ERR_CV_MODE || val == 0) ? true : false;
 #endif
 	}
 
 #ifdef CONFIG_LGE_PM
+	if (val == ERR_CHARGING_DISABLED) {
+		msleep(100);
+		rc = qnovo_read(chip, QNOVO_ERROR_STS2, &val, 1);
+		if (rc < 0) {
+			pr_info("qni: <><> Couldn't read error_sts2 rc = %d\n", rc);
+			err_status = true;
+		} else {
+			err_status = (val == ERR_CV_MODE || val == 0) ? false : true;
+		}
+		pr_info("qni:%s ERROR_STS2=0x02 -> 0x%X (error_state=%d)\n",
+						__func__, val, err_status);
+	}
+
 	vote(chip->disable_votable, QNOVO_ERR_VOTER, err_status, 0);
 #else
 	if (chip->ok_to_qnovo ^ ok_to_qnovo) {
@@ -1392,11 +1496,12 @@ static void input_probation_work(struct work_struct *work)
 			struct qnovo, input_probation_work);
 	int t;
 
-	pr_info("qni:%s: enter input_probation(usb=%d, dc=%d)\n",
+	pr_info("qni:%s: >>> enter (usb=%d, dc=%d)\n",
 			__func__, chip->usb_present, chip->dc_present);
 	vote(chip->qnovo_awake_votable, INPUT_PB_VOTER, true, 0);
 	chip->input_probation_wip = true;
 	vote(chip->disable_votable, INPUT_PB_VOTER, true, 0);
+	vote(chip->disable_votable, USER_VOTER, false, 0);
 
 pb_restart:
 	t = 0;
@@ -1405,19 +1510,19 @@ pb_restart:
 	do {
 		msleep(POLLING_INTEVAL_MS);
 		if (chip->input_changed) {
-			pr_info("qni:%s: rerun input_probation(usb=%d, dc=%d)\n",
+			pr_info("qni:%s: <><><> rerun (usb=%d, dc=%d)\n",
 					__func__, chip->usb_present, chip->dc_present);
 			goto pb_restart;
 		}
 	} while (t++ < INPUT_PB_TIME_S*1000/POLLING_INTEVAL_MS);
 
-	if (chip->usb_present || chip->dc_present)
+	if (is_usb_present(chip))
 		vote(chip->disable_votable, INPUT_PB_VOTER, false, 0);
 
 	chip->input_probation_wip = false;
 	vote(chip->qnovo_awake_votable, INPUT_PB_VOTER, false, 0);
 
-	pr_info("qni:%s: exit input_probation(usb=%d, dc=%d)\n",
+	pr_info("qni:%s: <<< exit (usb=%d, dc=%d)\n",
 			__func__, chip->usb_present, chip->dc_present);
 }
 
@@ -1431,7 +1536,7 @@ static void ptrain_restart_work(struct work_struct *work)
 
 	chip->pt_restart_flag = true;
 
-	pr_info("qni:PT_RESTART detection enter.\n");
+	pr_info("qni:PT_RESTART detection >>> enter.\n");
 	rc = qnovo_read(chip, QNOVO_PTRAIN_EN, &pt_en, 1);
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't read QNOVO_PTRAIN_EN rc = %d\n",
@@ -1461,6 +1566,7 @@ static void ptrain_restart_work(struct work_struct *work)
 		goto clean_up;
 	}
 
+	/* pttime increments every 2 seconds */
 	i = 0;
 	do {
 		msleep(50);
@@ -1511,7 +1617,7 @@ static void ptrain_restart_work(struct work_struct *work)
 clean_up:
 	vote(chip->qnovo_awake_votable, PT_RESTART_VOTER, false, 0);
 	chip->pt_restart_flag = false;
-	pr_info("qni:PT_RESTART detection exit.\n");
+	pr_info("qni:PT_RESTART detection <<< exit.\n");
 }
 #endif
 
@@ -1520,11 +1626,6 @@ static int qnovo_notifier_call(struct notifier_block *nb,
 {
 	struct power_supply *psy = v;
 	struct qnovo *chip = container_of(nb, struct qnovo, nb);
-#ifdef CONFIG_LGE_PM
-	union power_supply_propval val;
-	bool input_present;
-	int rc;
-#endif
 
 	if (ev != PSY_EVENT_PROP_CHANGED)
 		return NOTIFY_OK;
@@ -1538,28 +1639,8 @@ static int qnovo_notifier_call(struct notifier_block *nb,
 		schedule_work(&chip->status_change_work);
 
 #ifdef CONFIG_LGE_PM
-	if (strcmp(psy->desc->name, "usb") == 0) {
-		rc = power_supply_get_property(psy,
-			POWER_SUPPLY_PROP_PRESENT, &val);
-
-		input_present =  rc < 0 ? false : val.intval;
-
-		if (input_present ^ chip->usb_present) {
-			chip->usb_present = input_present;
-			chip->input_changed = true;
-		}
-	}
-
-	if (strcmp(psy->desc->name, "dc") == 0) {
-		rc = power_supply_get_property(psy,
-			POWER_SUPPLY_PROP_PRESENT, &val);
-
-		input_present =  rc < 0 ? false : val.intval;
-		if (input_present ^ chip->dc_present) {
-			chip->dc_present = input_present;
-			chip->input_changed = true;
-		}
-	}
+	if (is_usb_available(chip) && is_dc_available(chip))
+		update_input_present(chip);
 
 	if (chip->input_changed
 		&& (chip->usb_present || chip->dc_present)
@@ -1573,15 +1654,28 @@ static int qnovo_notifier_call(struct notifier_block *nb,
 static irqreturn_t handle_ptrain_done(int irq, void *data)
 {
 	struct qnovo *chip = data;
-#ifndef CONFIG_LGE_PM
+#ifdef CONFIG_LGE_PM
+	int rc;
+	u8 pt_en;
 	union power_supply_propval pval = {0};
 
-	if (is_fg_available(chip))
+	rc = qnovo_read(chip, QNOVO_PTRAIN_EN, &pt_en, 1);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't read QNOVO_PTRAIN_EN rc = %d\n",
+			rc);
+	}
+
+	pr_info("qni:%s ok_to_qnovo=%d, pt_en=%u\n",
+			__func__, chip->ok_to_qnovo, pt_en);
+
+	qnovo_update_status(chip);
+	if (is_fg_available(chip) && chip->ok_to_qnovo && !pt_en)
 		power_supply_set_property(chip->bms_psy,
 				POWER_SUPPLY_PROP_RESISTANCE,
 				&pval);
-#endif
+#else
 	qnovo_update_status(chip);
+#endif
 	kobject_uevent(&chip->dev->kobj, KOBJ_CHANGE);
 	return IRQ_HANDLED;
 }

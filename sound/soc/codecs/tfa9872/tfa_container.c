@@ -2437,6 +2437,22 @@ int tfa_tib_dsp_msgblob(int devidx, int length, const char *buffer)
 		return total;
 	}
 
+	if (length == -2) {
+#if defined(TFADSP_DSP_BUFFER_POOL)
+		if (blob_p_index != -1) {
+			tfa98xx_buffer_pool_access
+				(devidx, blob_p_index, 0, POOL_RETURN);
+			blob_p_index = -1;
+		} else {
+			kfree(blob);
+		}
+#else
+		kfree(blob);
+#endif /* TFADSP_DSP_BUFFER_POOL */
+		blob = 0; /* Set back to 0 otherwise no new malloc is done! */
+		return 0;
+	}
+
 	if (blob==0) {
 		if (tfa98xx_cnt_verbose)
 				pr_debug("%s, Creating the multi-message \n",__func__);

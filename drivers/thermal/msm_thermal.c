@@ -1074,7 +1074,8 @@ static int msm_lmh_dcvs_update(int cpu)
 		pr_err("%s: unknown affinity %d\n", __func__, id);
 		return -EINVAL;
 	};
-	pr_err("[TM] LMh DCVS : cluster%d - max %7u, min %7u\n", id, max_freq, min_freq);
+	pr_info_ratelimited("[TM] LMh DCVS : cluster%d - max %7u, min %7u\n",
+			id, max_freq, min_freq);
 	ret = msm_lmh_dcvs_write(affinity, MSM_LIMITS_SUB_FN_GENERAL,
 					MSM_LIMITS_DOMAIN_MAX, max_freq);
 	if (ret)
@@ -3679,12 +3680,6 @@ static int __ref msm_thermal_cpu_callback(struct notifier_block *nfb,
 
 	switch (action & ~CPU_TASKS_FROZEN) {
 	case CPU_UP_PREPARE:
-		/*
-		 * Apply LMH freq cap vote, which was requested when the
-		 * core was offline.
-		 */
-		if (lmh_dcvs_available)
-			msm_lmh_dcvs_update(cpu);
 		if (!cpumask_test_and_set_cpu(cpu, cpus_previously_online))
 			pr_debug("Total prev cores online tracked %u\n",
 				cpumask_weight(cpus_previously_online));

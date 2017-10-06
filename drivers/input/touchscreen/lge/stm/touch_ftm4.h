@@ -554,9 +554,11 @@ struct ftm4_data {
 	struct afe_info afe;
 	bool pure_autotune;
 	u8 pure_autotune_info;
+	int ic_info_ret;
 
 	int ta_detect_pin;
 	struct ftm4_fb_blank fb_blank;
+	int vr_status;
 
 	u8 data[FTS_EVENT_SIZE * FTS_FIFO_MAX];
 	enum palm_status palm;
@@ -594,5 +596,8 @@ int ftm4_cmd_completion_check(struct device *dev, u8 event1, u8 event2, u8 event
 int ftm4_ic_info(struct device *dev);
 void ftm4_do_autotune(struct device *dev);
 int ftm4_check_pure_autotune_key(void);
+void ftm4_osc_trim_cmd(struct device *dev);
+void ftm4_execute_force_autotune(struct device *dev);
+int ftm4_init(struct device *dev);
 
 #endif /* LGE_TOUCH_FTM4_H */

@@ -1880,6 +1880,10 @@ static struct page *__rmqueue(struct zone *zone, unsigned int order,
 #endif
 
 	if (unlikely(!page)) {
+		if (migratetype == MIGRATE_MOVABLE)
+			page = __rmqueue_cma_fallback(zone, order);
+
+		if (!page)
 		page = __rmqueue_fallback(zone, order, migratetype);
 	}
 

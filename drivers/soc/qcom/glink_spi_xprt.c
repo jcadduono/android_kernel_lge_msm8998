@@ -1760,6 +1760,9 @@ static int power_vote(struct glink_transport_if *if_ptr, uint32_t state)
 	spin_lock_irqsave(&einfo->activity_lock, flags);
 	einfo->activity_flag |= ACTIVE_TX;
 	spin_unlock_irqrestore(&einfo->activity_lock, flags);
+#ifdef CONFIG_MACH_LGE
+    pr_err("%s: TX activity_flag %d\n", __func__, einfo->activity_flag);
+#endif /* CONFIG_MACH_LGE */
 	return 0;
 }
 
@@ -1775,6 +1778,11 @@ static int power_unvote(struct glink_transport_if *if_ptr)
 	struct edge_info *einfo;
 
 	einfo = container_of(if_ptr, struct edge_info, xprt_if);
+#ifdef CONFIG_MACH_LGE
+    if(einfo->activity_flag == 1)
+        pr_err("%s: TX activity_flag %d\n", __func__, einfo->activity_flag);
+#endif /* CONFIG_MACH_LGE */
+
 	spin_lock_irqsave(&einfo->activity_lock, flags);
 	einfo->activity_flag &= ~ACTIVE_TX;
 	spin_unlock_irqrestore(&einfo->activity_lock, flags);

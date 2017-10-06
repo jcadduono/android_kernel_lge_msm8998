@@ -274,9 +274,7 @@ int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 #if defined(CONFIG_LGE_DISPLAY_CONTROL)
 #if defined(CONFIG_LGE_DISPLAY_COLOR_MANAGER)
-	if (lge_ctrl_pdata->screen_mode) {
 		lge_set_screen_mode(ctrl, true);
-	}
 #endif
 
 #if defined(CONFIG_LGE_DISPLAY_COMFORT_MODE)

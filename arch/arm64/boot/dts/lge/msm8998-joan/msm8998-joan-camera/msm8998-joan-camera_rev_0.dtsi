@@ -565,6 +565,7 @@ i2c_8: i2c@c1b6000 {
 		qcom,led-flash-src = <&led_flash0>;
 		qcom,eeprom-src = <&eeprom2>;
 		cam_vio-supply = <&pm8998_l6>;
+		bob_vreg-supply = <&pmi8998_bob>;
 		qcom,cam-vreg-name = "cam_vio", "cam_vana", "cam_vdig";
 		qcom,cam-vreg-type = <1800000 0 0>;
 		qcom,cam-vreg-min-voltage = <1800000 0 0>;

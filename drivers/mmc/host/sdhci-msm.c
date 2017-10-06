@@ -3339,11 +3339,8 @@ void sdhci_msm_dump_vendor_regs(struct sdhci_host *host)
 
 	sdhci_msm_cache_debug_data(host);
 	pr_info("----------- VENDOR REGISTER DUMP -----------\n");
-#if defined(CONFIG_MACH_LGE)
-	if(mmc_card_mmc((msm_host->mmc->card)))
-#else
+
 	if (host->cq_host)
-#endif
 		sdhci_msm_cmdq_dump_debug_ram(host);
 
 	MMC_TRACE(host->mmc, "Data cnt: 0x%08x | Fifo cnt: 0x%08x\n",

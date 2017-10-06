@@ -788,7 +788,11 @@ static int gs_start_io(struct gs_port *port)
 		return -EIO;
 
 	/* unblock any pending writes into our circular buffer */
+#ifndef CONFIG_LGE_USB_GADGET
 	if (started) {
+#else
+	if (started && port->port.tty) {
+#endif
 		tty_wakeup(port->port.tty);
 	} else {
 		gs_free_requests(ep, head, &port->read_allocated);

@@ -55,6 +55,8 @@ static s16 cx_data[FORCE_CH_SIZE][SENSE_CH_SIZE];
 static s16 force_ix_data[FORCE_CH_SIZE];
 static s16 sense_ix_data[SENSE_CH_SIZE];
 
+static ssize_t show_aft_sd(struct device *dev, char *buf);
+
 int ftm4_check_pure_autotune_key(void)
 {
 	char *fname = "/sdcard/touch_pure_autotune.txt";
@@ -486,6 +488,11 @@ static int ftm4_compare_self_rawdata(
 				(s16 *)self_force_lower, 1, FORCE_CH_SIZE);
 		ftm4_get_limit(dev, "LPWG_SELF_FORCE_RAWDATA_UPPER",
 				(s16 *)self_force_upper, 1, FORCE_CH_SIZE);
+
+		ftm4_get_limit(dev, "LPWG_SELF_SENSE_RAWDATA_LOWER",
+				(s16 *)self_sense_lower, 1, SENSE_CH_SIZE);
+		ftm4_get_limit(dev, "LPWG_SELF_SENSE_RAWDATA_UPPER",
+				(s16 *)self_sense_upper, 1, SENSE_CH_SIZE);
 	} else {
 		ftm4_get_limit(dev, "SELF_FORCE_RAWDATA_LOWER",
 				(s16 *)self_force_lower, 1, FORCE_CH_SIZE);
@@ -526,12 +533,6 @@ static int ftm4_compare_self_rawdata(
 			(sd_type == LPWG_SD_TEST) ? lpwg_str : "",
 			self_force_min, self_force_max);
 
-	if (sd_type == LPWG_SD_TEST) {
-		TOUCH_I("%s: only compare lpwg_self_force_rawdata in lpwg_sd test\n",
-				__func__);
-		goto exit;
-	}
-
 	for (i = 0; i < SENSE_CH_SIZE; i++) {
 		if ((self_sense_rawdata[i] < self_sense_lower[i]) ||
 				(self_sense_rawdata[i] > self_sense_upper[i])) {
@@ -551,12 +552,13 @@ static int ftm4_compare_self_rawdata(
 	}
 
 	ret += snprintf(w_buf + ret, BUF_SIZE - ret,
-			"\nself_sense_rawdata: min = %d , max = %d\n",
+			"\n%sself_sense_rawdata: min = %d , max = %d\n",
+			(sd_type == LPWG_SD_TEST) ? lpwg_str : "",
 			self_sense_min, self_sense_max);
-	TOUCH_I("%s: self_sense_rawdata: min = %d , max = %d\n", __func__,
+	TOUCH_I("%s: %sself_sense_rawdata: min = %d , max = %d\n", __func__,
+			(sd_type == LPWG_SD_TEST) ? lpwg_str : "",
 			self_sense_min, self_sense_max);
 
-exit:
 	ftm4_write_file(dev, w_buf, TIME_INFO_SKIP);
 
 	return result;
@@ -1038,14 +1040,10 @@ static void ftm4_print_self_rawdata(
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
 
-	if (sd_type == LPWG_SD_TEST) {
-		TOUCH_I("%s: only print lpwg_self_force_rawdata in lpwg_sd test\n",
-				__func__);
-		goto exit;
-	}
-
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "self_sense_rawdata\n");
-	TOUCH_I("self_sense_rawdata\n");
+	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "%sself_sense_rawdata\n",
+			(sd_type == LPWG_SD_TEST) ? lpwg_str : "");
+	TOUCH_I("%sself_sense_rawdata\n",
+			(sd_type == LPWG_SD_TEST) ? lpwg_str : "");
 
 	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "     ");
 	log_ret += snprintf(log_buf + log_ret,
@@ -1078,7 +1076,6 @@ static void ftm4_print_self_rawdata(
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
 
-exit:
 	ftm4_write_file(dev, w_buf, TIME_INFO_SKIP);
 }
 
@@ -1316,12 +1313,6 @@ static int ftm4_read_self_raw_frame(
 	for (count = 0; count < FORCE_CH_SIZE; count++) {
 		self_force_rawdata[count] = read_data[count * 2 + d0_offset] +
 			(read_data[count * 2 + d0_offset + 1] << 8);
-	}
-
-	if (sd_type == LPWG_SD_TEST) {
-		TOUCH_I("%s: only read lpwg_self_force_rawdata in lpwg_sd test\n",
-				__func__);
-		goto exit;
 	}
 
 	buf[1] = 0x00;
@@ -2390,12 +2381,59 @@ static int ftm4_print_firmware_version(struct device *dev)
 			d->prd_info.date[4], d->prd_info.date[5]);
 	ret += snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
 			"pure_autotune : %s\n\n", d->pure_autotune
-			? ((d->pure_autotune_info == 0) ? "0 (D)" : "1 (E)")
+			? ((d->pure_autotune_info == 1) ? "1 (E)" : "0 (D)")
 			: "0");
 
 	ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
 
 	return 0;
+}
+
+static int ftm4_wait_for_finished_sensor_on(struct device *dev)
+{
+	int ret = 0;
+	u8 addr = READ_ONE_EVENT;
+	u8 data[FTS_EVENT_SIZE] = {0};
+	int retry = 0;
+
+	TOUCH_TRACE();
+
+	while (ftm4_reg_read(dev, &addr, 1, data, FTS_EVENT_SIZE)) {
+		if ((data[0] == EVENTID_STATUS_EVENT) &&
+				(data[1] == STATUS_EVENT_FINISH_FORCE_CALIBRATION)) {
+			TOUCH_I("%s: Finished Sensor On [%02X][%02X][%02X][%02X]\n",
+					__func__,
+					data[0], data[1], data[2], data[3]);
+			break;
+		} else {
+			TOUCH_I("%s: [%02X][%02X][%02X][%02X]\n",
+					__func__,
+					data[0], data[1], data[2], data[3]);
+		}
+
+		if (retry++ > FTS_RETRY_COUNT * 7) {
+			TOUCH_E("Time Over [%02X][%02X][%02X][%02X]\n",
+					data[0], data[1], data[2], data[3]);
+			ret = -1;
+			break;
+		} else {
+			touch_msleep(10);
+		}
+	}
+
+	return ret;
+}
+
+static void ftm4_enable_lpwg_mode(struct device *dev)
+{
+	u8 buf[4] = {0xC1, 0x00, 0x00, 0x20};
+	int ret = 0;
+
+	TOUCH_TRACE();
+
+	ret = ftm4_reg_write(dev, buf, 4);
+	if (ret < 0)
+		TOUCH_E("failed to write reg (ret = %d)\n", ret);
 }
 
 static ssize_t show_sd(struct device *dev, char *buf)
@@ -2412,6 +2450,13 @@ static ssize_t show_sd(struct device *dev, char *buf)
 	int openshort_ret = 0;
 
 	TOUCH_TRACE();
+
+	if (atomic_read(&ts->state.debug_option_mask) & DEBUG_OPTION_9) {
+		ret = show_aft_sd(dev, buf);
+		atomic_set(&ts->state.debug_option_mask,
+				(atomic_read(&ts->state.debug_option_mask) & ~DEBUG_OPTION_9));
+		return ret;
+	}
 
 	mutex_lock(&ts->lock);
 
@@ -2467,7 +2512,7 @@ static ssize_t show_sd(struct device *dev, char *buf)
 	ftm4_wait_for_ready(dev);
 	ftm4_do_autotune(dev);
 	ftm4_command(dev, SENSEON);
-	touch_msleep(50);
+	ftm4_wait_for_finished_sensor_on(dev);
 
 	ftm4_write_file(dev, "\n========== after autotune ==========\n",
 			TIME_INFO_SKIP);
@@ -2576,7 +2621,6 @@ static ssize_t show_lpwg_sd(struct device *dev, char *buf)
 	int ret = 0;
 	int print_fw_ver_ret = 0;
 	int lpwg_self_rawdata_ret = 0;
-	int lpwg_mutual_rawdata_ret = 0;
 
 	TOUCH_TRACE();
 
@@ -2621,14 +2665,16 @@ static ssize_t show_lpwg_sd(struct device *dev, char *buf)
 	TOUCH_I("========== before autotune ==========\n");
 
 	ftm4_self_rawdata_test(dev, LPWG_SD_TEST);
-	ftm4_mutual_rawdata_test(dev, LPWG_SD_TEST);
 
 	ftm4_system_reset(dev);
 	touch_msleep(20);
 	ftm4_wait_for_ready(dev);
 	ftm4_do_autotune(dev);
+	ftm4_enable_lpwg_mode(dev);
+	ftm4_command(dev, SENSEON);
+	ftm4_wait_for_finished_sensor_on(dev);
 	ftm4_command(dev, FTS_CMD_LOWPOWER_MODE);
-	touch_msleep(50);
+	ftm4_wait_for_finished_sensor_on(dev);
 
 	ftm4_write_file(dev, "\n========== after autotune ==========\n",
 			TIME_INFO_SKIP);
@@ -2637,29 +2683,22 @@ static ssize_t show_lpwg_sd(struct device *dev, char *buf)
 	/*
 	 * LPWG_RAWDATA_TEST
 	 * lpwg_self_rawdata - pass : 0, fail : 1
-	 * lpwg_mutual_rawdata - pass : 0, fail : 1
 	 */
 	TOUCH_I("LPWG_RAWDATA_TEST\n");
 	lpwg_self_rawdata_ret = ftm4_self_rawdata_test(dev, LPWG_SD_TEST);
-	lpwg_mutual_rawdata_ret = ftm4_mutual_rawdata_test(dev, LPWG_SD_TEST);
 
 	ret += snprintf(buf + ret, PAGE_SIZE - ret,
 			"========RESULT=======\n");
 	TOUCH_I("========RESULT=======\n");
 
-	if ((lpwg_self_rawdata_ret == 0) &&
-			(lpwg_mutual_rawdata_ret == 0)) {
+	if (lpwg_self_rawdata_ret == 0) {
 		ret += snprintf(buf + ret, PAGE_SIZE - ret,
 			"LPWG RawData : Pass\n");
 		TOUCH_I("LPWG RawData : Pass\n");
 	} else {
 		ret += snprintf(buf + ret, PAGE_SIZE - ret,
-			"LPWG RawData : Fail (%d/%d)\n",
-			lpwg_self_rawdata_ret ? 0 : 1,
-			lpwg_mutual_rawdata_ret ? 0 : 1);
-		TOUCH_I("LPWG RawData : Fail (%d/%d)\n",
-			lpwg_self_rawdata_ret ? 0 : 1,
-			lpwg_mutual_rawdata_ret ? 0 : 1);
+			"LPWG RawData : Fail\n");
+		TOUCH_I("LPWG RawData : Fail\n");
 	}
 
 	TOUCH_I("=====================\n");
@@ -2690,6 +2729,7 @@ exit:
 static ssize_t show_aft_sd(struct device *dev, char *buf)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
+	struct ftm4_data *d = to_ftm4_data(dev);
 	int ret = 0;
 	int print_fw_ver_ret = 0;
 	int self_rawdata_ret = 0;
@@ -2766,7 +2806,8 @@ static ssize_t show_aft_sd(struct device *dev, char *buf)
 	TOUCH_I("OPEN_SHORT TEST\n");
 	openshort_ret = ftm4_open_short_test(dev);
 
-	ret = snprintf(buf, PAGE_SIZE, "\n========RESULT=======\n");
+	ret += snprintf(buf + ret, PAGE_SIZE - ret,
+			"\n========RESULT=======\n");
 	TOUCH_I("========RESULT=======\n");
 
 	if ((self_rawdata_ret == 0) &&
@@ -2796,22 +2837,28 @@ static ssize_t show_aft_sd(struct device *dev, char *buf)
 				hf_cx_data_ret ? 0 : 1);
 	}
 
-	if (openshort_ret == 0) {
+	if (openshort_ret == 0 &&
+			(d->pure_autotune == 1 && d->pure_autotune_info == 1)) {
 		ret += snprintf(buf + ret, PAGE_SIZE - ret,
 				"Channel Status : Pass\n");
 		TOUCH_I("Channel Status : Pass\n");
 	} else {
 		ret += snprintf(buf + ret, PAGE_SIZE - ret,
-			"Channel Status : Fail (%d/%d)\n",
+			"Channel Status : Fail (%d/%d/%d)\n",
 			((openshort_ret & OPEN_TEST_FLAG) == OPEN_TEST_FLAG)
 			? 0 : 1,
 			((openshort_ret & SHORT_TEST_FLAG) == SHORT_TEST_FLAG)
+			? 0 : 1,
+			(d->pure_autotune != 1 || d->pure_autotune_info != 1)
 			? 0 : 1);
-		TOUCH_I("Channel Status : Fail (%d/%d)\n",
+		TOUCH_I("Channel Status : Fail (%d/%d/%d)\n",
 			((openshort_ret & OPEN_TEST_FLAG) == OPEN_TEST_FLAG)
 			? 0 : 1,
 			((openshort_ret & SHORT_TEST_FLAG) == SHORT_TEST_FLAG)
+			? 0 : 1,
+			(d->pure_autotune != 1 || d->pure_autotune_info != 1)
 			? 0 : 1);
+
 	}
 
 	TOUCH_I("=====================\n");
@@ -2845,7 +2892,6 @@ static ssize_t show_aft_lpwg_sd(struct device *dev, char *buf)
 	int ret = 0;
 	int print_fw_ver_ret = 0;
 	int lpwg_self_rawdata_ret = 0;
-	int lpwg_mutual_rawdata_ret = 0;
 
 	TOUCH_TRACE();
 
@@ -2888,28 +2934,22 @@ static ssize_t show_aft_lpwg_sd(struct device *dev, char *buf)
 	/*
 	 * LPWG_RAWDATA_TEST
 	 * lpwg_self_rawdata - pass : 0, fail : 1
-	 * lpwg_mutual_rawdata - pass : 0, fail : 1
 	 */
 	TOUCH_I("LPWG_RAWDATA_TEST\n");
 	lpwg_self_rawdata_ret = ftm4_self_rawdata_test(dev, LPWG_SD_TEST);
-	lpwg_mutual_rawdata_ret = ftm4_mutual_rawdata_test(dev, LPWG_SD_TEST);
 
-	ret = snprintf(buf, PAGE_SIZE, "========RESULT=======\n");
+	ret += snprintf(buf + ret, PAGE_SIZE - ret,
+			"========RESULT=======\n");
 	TOUCH_I("========RESULT=======\n");
 
-	if ((lpwg_self_rawdata_ret == 0) &&
-			(lpwg_mutual_rawdata_ret == 0)) {
+	if (lpwg_self_rawdata_ret == 0) {
 		ret += snprintf(buf + ret, PAGE_SIZE - ret,
 			"LPWG RawData : Pass\n");
 		TOUCH_I("LPWG RawData : Pass\n");
 	} else {
 		ret += snprintf(buf + ret, PAGE_SIZE - ret,
-			"LPWG RawData : Fail (%d/%d)\n",
-			lpwg_self_rawdata_ret ? 0 : 1,
-			lpwg_mutual_rawdata_ret ? 0 : 1);
-		TOUCH_I("LPWG RawData : Fail (%d/%d)\n",
-			lpwg_self_rawdata_ret ? 0 : 1,
-			lpwg_mutual_rawdata_ret ? 0 : 1);
+			"LPWG RawData : Fail\n");
+		TOUCH_I("LPWG RawData : Fail\n");
 	}
 
 	TOUCH_I("=====================\n");

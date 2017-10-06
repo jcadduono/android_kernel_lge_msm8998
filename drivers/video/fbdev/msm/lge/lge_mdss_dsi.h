@@ -96,6 +96,7 @@ struct lge_mdss_dsi_ctrl_pdata {
 	int cm_blue_step;
 	struct lge_dsi_color_manager_mode_entry color_manager_table[NUM_COLOR_MODES];
 	u32 color_manager_table_len;
+	bool color_manager_default_status;
 #endif
 #if defined(CONFIG_LGE_DISPLAY_COMFORT_MODE)
 	int comfort_view;

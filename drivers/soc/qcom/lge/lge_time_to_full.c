@@ -881,6 +881,10 @@ static int ttf_power_get_property(struct power_supply *psy,
 	switch (prop) {
 		case POWER_SUPPLY_PROP_TIME_TO_FULL_NOW:
 			val->intval = ttf->ttf_now;
+			if (val->intval > 10 * 60 * 60) {
+				val->intval = -1;
+				rc = -EINVAL;
+			}
 			break;
 		default :
 			pr_ttf(PR_ERROR, "Unsupported Property %d\n", prop);

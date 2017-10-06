@@ -328,6 +328,8 @@ COMPAT_SYSCALL_DEFINE4(signalfd4, int, ufd,
 		return -EFAULT;
 	sigset_from_compat(&tmp, &ss32);
 	ksigmask = compat_alloc_user_space(sizeof(sigset_t));
+	if (!ksigmask)
+		return -EFAULT;
 	if (copy_to_user(ksigmask, &tmp, sizeof(sigset_t)))
 		return -EFAULT;
 

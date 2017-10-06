@@ -181,8 +181,8 @@
 
 &mdss_dp_ctrl {
 	pinctrl-names = "mdss_dp_active", "mdss_dp_sleep";
-	pinctrl-0 = <&mdss_dp_aux_active &mdss_dp_usbplug_cc_active>;
-	pinctrl-1 = <&mdss_dp_aux_suspend &mdss_dp_usbplug_cc_suspend>;
+	pinctrl-0 = <&mdss_dp_aux_oe_active &mdss_dp_aux_sel_active &mdss_dp_usbplug_cc_active>;
+	pinctrl-1 = <&mdss_dp_aux_oe_suspend &mdss_dp_aux_sel_suspend &mdss_dp_usbplug_cc_suspend>;
 	qcom,aux-en-gpio = <&tlmm 100 0>;
 	qcom,aux-sel-gpio = <&tlmm 80 0>;
 	qcom,usbplug-cc-gpio = <&tlmm 38 0>;

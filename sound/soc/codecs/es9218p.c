@@ -46,9 +46,10 @@
 
 //#define     USE_HPAHiQ                  // THD increased by ~2dB and Power Consumption increasded by ~2mA
 //#define   ES9218P_DEBUG               // ESS pop-click debugging, define to enable step by step override sequence debug messages and time delays.  Use to pinpoint pop-click.
-//#define     WORKAROUND_FOR_CORNER_SAMPLES     // set ResetB high two times and send a cmd of soft reset
+#define     WORKAROUND_FOR_CORNER_SAMPLES     // set ResetB high two times and send a cmd of soft reset
 //#define     ENABLE_DOP_AUTO_MUTE
 #define     ENABLE_DOP_SOFT_MUTE
+#define     WORKAROUND_TICK_NOISE       // occur recording tick noise when switching ESS ResetB to LOW. At the same time, Moisture Detect Switch also is changed.
 
 static struct es9218_priv *g_es9218_priv = NULL;
 static int  es9218_write_reg(struct i2c_client *client, int reg, u8 value);
@@ -302,7 +303,6 @@ static const u8 avc_vol_tbl[] = {
     /*- 22  db */   0X56,
     /*- 23  db */   0X57,
     /*- 24  db */   0X58,
-    /*- 25  db */   0X59,
 };
 
 static const char *power_state[] = {
@@ -1346,6 +1346,10 @@ static int  es9218p_lpb2standby(void)
     return  0;
 }
 
+#ifdef WORKAROUND_TICK_NOISE
+extern void wcd_set_clamp_on_mic(int value);
+static int force_set_clamper_by_sleep_work = 0;
+#endif /* WORKAROUND_TICK_NOISE */
 
 static int  es9218p_sabre_hifione2lpb(void)
 {
@@ -1373,8 +1377,18 @@ static int  es9218p_sabre_hifione2lpb(void)
         mdelay(100);
     }
 #endif /* CONFIG_MACH_MSM8998_JOAN */
+
+#if defined(WORKAROUND_TICK_NOISE)
+    if( force_set_clamper_by_sleep_work )
+        wcd_set_clamp_on_mic(0);
+#endif /* WORKAROUND_TICK_NOISE */
+
     es9218_reset_gpio_L();  // RESETb LOW move to Low Power Bypass mode
 
+#if defined(WORKAROUND_TICK_NOISE)
+    if( force_set_clamper_by_sleep_work )
+        wcd_set_clamp_on_mic(1);
+#endif /* WORKAROUND_TICK_NOISE */
     ///////////////////////////////
     // sabre is now in low power bypass mode
     ///////////////////////////////
@@ -1403,7 +1417,17 @@ static int  es9218p_sabre_hifitwo2lpb(void)
     // sabre is now in LowFi mode controlled by GPIO2
     ///////////////////////////////
 
+#if defined(WORKAROUND_TICK_NOISE)
+    if( force_set_clamper_by_sleep_work )
+        wcd_set_clamp_on_mic(0);
+#endif /* WORKAROUND_TICK_NOISE */
+
     es9218_reset_gpio_L();  // RESETb LOW move to Low Power Bypass mode
+
+#if defined(WORKAROUND_TICK_NOISE)
+    if( force_set_clamper_by_sleep_work )
+        wcd_set_clamp_on_mic(1);
+#endif /* WORKAROUND_TICK_NOISE */
 
     ///////////////////////////////
     // sabre is now in low power bypass mode
@@ -1852,7 +1876,16 @@ static void es9218_sabre_sleep_work (struct work_struct *work)
         pr_info("%s(): sleep_work state is %s running \n", __func__, power_state[es9218_power_state]);
 #endif
 
+#if defined(WORKAROUND_TICK_NOISE)
+        force_set_clamper_by_sleep_work = 1;
+#endif /* WORKAROUND_TICK_NOISE */
+
         es9218p_sabre_hifi2lpb();
+
+#if defined(WORKAROUND_TICK_NOISE)
+        force_set_clamper_by_sleep_work = 0;
+#endif /* WORKAROUND_TICK_NOISE */
+
     }
     else {
         pr_info("%s(): sleep_work state is %s skip operation \n", __func__, power_state[es9218_power_state]);
@@ -2001,25 +2034,6 @@ static int es9218_headset_type_put(struct snd_kcontrol *kcontrol,
     if(value != 0) {
         g_headset_type = value;
         pr_debug("%s(): type = %d, state = %s\n ", __func__, value, power_state[es9218_power_state]);
-
-        // AVC volume setting
-        switch(g_headset_type) {
-            case 1:    // normal
-#if defined (CONFIG_MACH_MSM8998_JOAN_GLOBAL_COM) || defined (CONFIG_MACH_MSM8998_JOAN_GLOBAL_LDU) || defined (CONFIG_MACH_MSM8998_JOAN_GLOBAL_CA)
-                g_avc_volume = 15;
-#else
-                g_avc_volume = 14;
-#endif
-                break;
-            case 2:    // advanced
-                g_avc_volume = 0;
-                break;
-            case 3:    // aux
-                g_avc_volume = 6;
-                break;
-            default :
-                break;
-        }
     } else {
         /*
          * In mixer_paths.xml, 0 stands for no headset.
@@ -2249,9 +2263,18 @@ static int es9218_avc_volume_put(struct snd_kcontrol *kcontrol,
         struct snd_ctl_elem_value *ucontrol)
 {
     int ret = 0;
+    int vol = 25;
 
     /* A range of g_avc_volume is from 0 to 24. */
-    g_avc_volume = (int)ucontrol->value.integer.value[0];
+    vol = (int)ucontrol->value.integer.value[0];
+
+    if (vol >= sizeof(avc_vol_tbl)/sizeof(avc_vol_tbl[0])) {
+        pr_err("%s() : Invalid vol = %d return \n", __func__, vol);
+        return 0;
+    }
+
+    g_avc_volume = vol;
+
     pr_debug("%s(): AVC Volume= -%d db  state = %s\n", __func__, g_avc_volume , power_state[es9218_power_state]);
 
     if (es9218_power_state < ESS_PS_HIFI) {

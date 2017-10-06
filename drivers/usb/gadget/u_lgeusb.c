@@ -75,7 +75,7 @@ int lgeusb_get_model_name(char *model, size_t size)
 	if (!model)
 		return -EINVAL;
 
-	strlcpy(model, model_string, size - 1);
+	strlcpy(model, model_string, size);
 	pr_info("lgeusb: model name %s\n", model);
 	return 0;
 }
@@ -85,7 +85,7 @@ int lgeusb_get_phone_id(char *phoneid, size_t size)
 	if (!phoneid)
 		return -EINVAL;
 
-	strlcpy(phoneid, phoneid_string, size - 1);
+	strlcpy(phoneid, phoneid_string, size);
 	pr_info("lgeusb: phoneid %s\n", phoneid);
 	return 0;
 }
@@ -95,7 +95,7 @@ int lgeusb_get_sw_ver(char *sw_ver, size_t size)
 	if (!sw_ver)
 		return -EINVAL;
 
-	strlcpy(sw_ver, swver_string, size - 1);
+	strlcpy(sw_ver, swver_string, size);
 	pr_info("lgeusb: sw version %s\n", sw_ver);
 	return 0;
 }
@@ -105,7 +105,7 @@ int lgeusb_get_sub_ver(char *sub_ver, size_t size)
 	if (!sub_ver)
 		return -EINVAL;
 
-	strlcpy(sub_ver, subver_string, size - 1);
+	strlcpy(sub_ver, subver_string, size);
 	pr_info("lgeusb: sw sub version %s\n", sub_ver);
 	return 0;
 }

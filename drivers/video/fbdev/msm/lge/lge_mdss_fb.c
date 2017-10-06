@@ -28,6 +28,8 @@
 #include "lge_mdss_display.h"
 
 struct msm_fb_data_type *mfd_primary_base;
+extern void mdss_fb_bl_update_notify(struct msm_fb_data_type *mfd,
+				uint32_t notification_type);
 
 void lge_mdss_fb_init(struct msm_fb_data_type *mfd)
 {
@@ -540,14 +542,90 @@ int lge_br_to_bl_ex(struct msm_fb_data_type *mfd, int br_lvl)
 	return bl_lvl;
 }
 
+#if defined(CONFIG_LGE_DISPLAY_DYNAMIC_RESOLUTION_SWITCH)
+static bool mdss_fb_is_running_drs(struct msm_fb_data_type *mfd)
+{
+	bool ret = false;
+	struct mdss_panel_data *pdata = NULL;
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+
+	if (!mfd) {
+		pr_err("fb data is null\n");
+		return ret;
+	}
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	if (!pdata) {
+		pr_err("panel data is null\n");
+		return ret;
+	}
+
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+			panel_data);
+	if (!ctrl) {
+		pr_err("dsi control data is null\n");
+		return ret;
+	}
+
+	if (ctrl->requested_resolution_switch || ctrl->keep_bist_on) {
+		ret = true;
+	}
+
+	return ret;
+}
+#endif
+
+/* must call this function from within mfd->bl_lock */
+void mdss_fb_set_backlight_ex(struct msm_fb_data_type *mfd, u32 bkl_lvl)
+{
+	struct mdss_panel_data *pdata;
+	u32 temp = bkl_lvl;
+	bool ad_bl_notify_needed = false;
+	bool bl_notify_needed = false;
+
+#if defined(CONFIG_LGE_SP_MIRRORING_CTRL_BL)
+	if(lge_is_bl_update_blocked(bkl_lvl))
+		return;
+#endif
+
+	if (((!mdss_fb_is_power_on_lp(mfd) && mfd->dcm_state != DCM_ENTER)
+		|| !mfd->allow_bl_update_ex) ||
+#if defined(CONFIG_LGE_DISPLAY_DYNAMIC_RESOLUTION_SWITCH)
+		mdss_fb_is_running_drs(mfd) ||
+#endif
+		mfd->panel_info->cont_splash_enabled) {
+		mfd->unset_bl_level_ex = bkl_lvl;
+		return;
+	} else if (mdss_fb_is_power_on_lp(mfd) && mfd->panel_info->panel_dead) {
+		mfd->unset_bl_level_ex = mfd->bl_level;
+	} else {
+		mfd->unset_bl_level_ex = U32_MAX;
+	}
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+
+	if ((pdata) && (pdata->set_backlight)) {
+		if (mfd->bl_level != bkl_lvl) {
+			bl_notify_needed = true;
+			pr_debug("backlight sent to panel :%d\n", temp);
+			pdata->set_backlight(pdata, temp);
+			mfd->bl_level = bkl_lvl;
+			mfd->bl_level_scaled = (temp * mfd->bl_scale) / 1024;
+		}
+		if (ad_bl_notify_needed)
+			mdss_fb_bl_update_notify(mfd,
+				NOTIFY_TYPE_BL_AD_ATTEN_UPDATE);
+		if (bl_notify_needed)
+			mdss_fb_bl_update_notify(mfd,
+				NOTIFY_TYPE_BL_UPDATE);
+	}
+}
+
 static void mdss_fb_set_bl_brightness_ambient(struct led_classdev *led_cdev,
 				      enum led_brightness value)
 {
 	struct msm_fb_data_type *mfd = dev_get_drvdata(led_cdev->dev->parent);
-	bool isdoze;
-	int bl_lvl, panel_state;
-
-	panel_state = mfd->panel_info->panel_power_state;
+	int bl_lvl;
 
 	if (value > mfd->panel_info->brightness_max)
 		value = mfd->panel_info->brightness_max;
@@ -558,21 +636,14 @@ static void mdss_fb_set_bl_brightness_ambient(struct led_classdev *led_cdev,
 		bl_lvl = 1;
 	}
 
-	isdoze = (((panel_state == MDSS_PANEL_POWER_LP1) ||
-			(panel_state == MDSS_PANEL_POWER_LP2)) ? true : false);
-
 	if (!IS_CALIB_MODE_BL(mfd) &&
 			(!mfd->ext_bl_ctrl || !value || !mfd->bl_level)) {
-		if (isdoze) {
 			mutex_lock(&mfd->bl_lock);
 			mfd->unset_bl_level_ex = U32_MAX;
-			mfd->allow_bl_update = true;
-			mdss_fb_set_backlight(mfd, bl_lvl);
-			mfd->allow_bl_update = false;
+		mfd->allow_bl_update_ex = true;
+		mdss_fb_set_backlight_ex(mfd, bl_lvl);
+		mfd->allow_bl_update_ex = false;
 			mutex_unlock(&mfd->bl_lock);
-		} else {
-			mfd->unset_bl_level_ex = (value ? bl_lvl : U32_MAX);
-		}
 	}
 }
 
@@ -584,14 +655,22 @@ void mdss_fb_update_backlight_ex(struct msm_fb_data_type *mfd)
 	if (mfd->unset_bl_level_ex == U32_MAX)
 		return;
 
+#if defined(CONFIG_LGE_DISPLAY_DYNAMIC_RESOLUTION_SWITCH)
+	if (mdss_fb_is_running_drs(mfd))
+		return;
+#endif
+
 	mutex_lock(&mfd->bl_lock);
-	if (!mfd->allow_bl_update) {
+	if (!mfd->allow_bl_update_ex) {
 		pdata = dev_get_platdata(&mfd->pdev->dev);
 		if ((pdata) && (pdata->set_backlight)) {
 			mfd->bl_level = mfd->unset_bl_level_ex;
 			temp = mfd->bl_level;
+			if (mdss_fb_is_power_on_lp(mfd))
 			pdata->set_backlight(pdata, temp);
-			mfd->allow_bl_update = true;
+			else
+				pr_info("ignore unset_bl_level_ex value\n");
+			mfd->allow_bl_update_ex = true;
 		}
 	}
 	mutex_unlock(&mfd->bl_lock);

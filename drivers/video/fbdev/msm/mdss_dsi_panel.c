@@ -2271,11 +2271,18 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 					__func__, __LINE__);
 	}
 
+	mdss_dsi_parse_dcs_cmds(np, &ctrl->pre_lp_on_cmds,
+			"qcom,mdss-dsi-pre-lp-mode-on", NULL);
 	mdss_dsi_parse_dcs_cmds(np, &ctrl->lp_on_cmds,
 			"qcom,mdss-dsi-lp-mode-on", NULL);
-
+	mdss_dsi_parse_dcs_cmds(np, &ctrl->post_lp_on_cmds,
+			"qcom,mdss-dsi-post-lp-mode-on", NULL);
+	mdss_dsi_parse_dcs_cmds(np, &ctrl->pre_lp_off_cmds,
+			"qcom,mdss-dsi-pre-lp-mode-off", NULL);
 	mdss_dsi_parse_dcs_cmds(np, &ctrl->lp_off_cmds,
 			"qcom,mdss-dsi-lp-mode-off", NULL);
+	mdss_dsi_parse_dcs_cmds(np, &ctrl->post_lp_off_cmds,
+			"qcom,mdss-dsi-post-lp-mode-off", NULL);
 
 	return 0;
 }
@@ -3043,18 +3050,8 @@ int mdss_dsi_panel_init(struct device_node *node,
 		pr_info("%s: Panel Name = %s\n", __func__, panel_name);
 		strlcpy(&pinfo->panel_name[0], panel_name, MDSS_MAX_PANEL_LEN);
 #if defined(CONFIG_LGE_DISPLAY_COMMON)
-		if (strncmp(panel_name, "SW43402 DV2.x cmd", 17) == 0) {
-			pr_err("[Display] %s: panel_type is LGD_SW43402_CMD_DSC_PANEL(DV2.0)\n",
-					__func__);
-			pinfo->panel_type = LGD_SIW_LG43402_1440_2880_ONCELL_CMD_PANEL;
-		}
-		else if (strncmp(panel_name, "SW43402 DV3.0 cmd", 17) == 0) {
-			pr_err("[Display] %s: panel_type is LGD_SW43402_CMD_DSC_PANEL(DV3.0)\n",
-					__func__);
-			pinfo->panel_type = LGD_SIW_LG43402_1440_2880_ONCELL_CMD_PANEL;
-		}
-		else if (strncmp(panel_name, "SW43402 DV3.1 cmd", 17) == 0) {
-			pr_err("[Display] %s: panel_type is LGD_SW43402_CMD_DSC_PANEL(DV3.1)\n",
+		if (strncmp(panel_name, "SW43402 cmd mode", 16) == 0) {
+			pr_err("[Display] %s: panel_type is LGD_SW43402_CMD_DSC_PANEL\n",
 					__func__);
 			pinfo->panel_type = LGD_SIW_LG43402_1440_2880_ONCELL_CMD_PANEL;
 		}

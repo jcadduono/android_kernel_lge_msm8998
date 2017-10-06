@@ -116,7 +116,7 @@ static ssize_t power_supply_show_property(struct device *dev,
   #ifdef CONFIG_LGE_PM
 	else if (off == POWER_SUPPLY_PROP_STATUS_RAW)
 		return sprintf(buf, "%s\n", status_text[value.intval]);
-	else if (off == POWER_SUPPLY_PROP_STATUS_PARALLEL)
+	else if (off == POWER_SUPPLY_PROP_PARALLEL_STATUS)
 		return sprintf(buf, "%s\n", status_text[value.intval]);
   #endif
 	else if (off == POWER_SUPPLY_PROP_CHARGE_TYPE)
@@ -308,7 +308,7 @@ static struct device_attribute power_supply_attrs[] = {
 #endif
 #ifdef CONFIG_LGE_PM
 	POWER_SUPPLY_ATTR(status_raw),
-	POWER_SUPPLY_ATTR(status_parallel),
+	POWER_SUPPLY_ATTR(parallel_status),
 	POWER_SUPPLY_ATTR(fastchg),
 	POWER_SUPPLY_ATTR(incompatible_chg),
 	POWER_SUPPLY_ATTR(parallel_batfet_en),
@@ -319,6 +319,7 @@ static struct device_attribute power_supply_attrs[] = {
 #endif
 #ifdef CONFIG_IDTP9223_CHARGER
 	POWER_SUPPLY_ATTR(qipma_on),
+	POWER_SUPPLY_ATTR(connection_type),
 #endif
 #ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_VZW_REQ
 	POWER_SUPPLY_ATTR(vzw_chg),

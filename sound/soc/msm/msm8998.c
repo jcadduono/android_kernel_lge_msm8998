@@ -33,7 +33,7 @@
 #include <sound/q6core.h>
 #include <sound/pcm_params.h>
 #include <sound/info.h>
-#include "device_event.h"
+#include <device_event.h>
 #include <linux/qdsp6v2/audio_notifier.h>
 #include "qdsp6v2/msm-pcm-routing-v2.h"
 #include "../codecs/wcd9335.h"
@@ -6619,7 +6619,6 @@ static struct snd_soc_dai_link msm_lge_dai_links[] = {
 		.platform_name = "msm-pcm-hostless",
 		.codec_name = "tfa98xx.7-0034",
 		.codec_dai_name = "tfa98xx-aif-7-34",
-		.dpcm_capture = 1,
 		.be_id = MSM_BACKEND_DAI_TERTIARY_MI2S_TX,
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
 		.ops = &msm_mi2s_be_ops,

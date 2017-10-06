@@ -524,9 +524,14 @@ struct mdss_dsi_ctrl_pdata {
 	struct dsi_panel_cmds post_dms_on_cmds;
 	struct dsi_panel_cmds post_panel_on_cmds;
 	struct dsi_panel_cmds off_cmds;
+	struct dsi_panel_cmds pre_lp_on_cmds;
 	struct dsi_panel_cmds lp_on_cmds;
+	struct dsi_panel_cmds post_lp_on_cmds;
+	struct dsi_panel_cmds pre_lp_off_cmds;
 	struct dsi_panel_cmds lp_off_cmds;
+	struct dsi_panel_cmds post_lp_off_cmds;
 	struct dsi_panel_cmds status_cmds;
+
 	u32 *status_valid_params;
 	u32 *status_cmds_rlen;
 	u32 *status_value;

@@ -1925,6 +1925,7 @@ uint32_t __qdf_nbuf_get_tso_info(qdf_device_t osdev, struct sk_buff *skb,
 		curr_seg->seg.num_frags++;
 
 		while (more_tso_frags) {
+			if (tso_frag_len > 0) {
 			curr_seg->seg.tso_frags[i].vaddr = tso_frag_vaddr;
 			curr_seg->seg.tso_frags[i].length = tso_frag_len;
 			curr_seg->seg.total_len += tso_frag_len;
@@ -1957,6 +1958,7 @@ uint32_t __qdf_nbuf_get_tso_info(qdf_device_t osdev, struct sk_buff *skb,
 				/* reset i and the tso payload size */
 				i = 1;
 				tso_seg_size = skb_shinfo(skb)->gso_size;
+			}
 			}
 
 			/* if the next fragment is contiguous */
@@ -2089,7 +2091,7 @@ uint32_t __qdf_nbuf_get_tso_num_seg(struct sk_buff *skb)
 	gso_size = skb_shinfo(skb)->gso_size;
 	tmp_len = skb->len - ((skb_transport_header(skb) - skb_mac_header(skb))
 		+ tcp_hdrlen(skb));
-	while (tmp_len) {
+	while (tmp_len > 0) {
 		num_segs++;
 		if (tmp_len > gso_size)
 			tmp_len -= gso_size;

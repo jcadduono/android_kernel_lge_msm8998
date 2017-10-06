@@ -1624,7 +1624,7 @@ static int tfa98xx_set_profile(struct snd_kcontrol *kcontrol,
 		pr_err("tfa98xx: sample rate [%d] not supported for this mixer profile [%d].\n", tfa98xx->rate, new_profile);
 		return 0;
 	}
-	pr_debug("selected container profile [%d]\n", prof_idx);
+	pr_info("%s: selected container profile [%d]\n", __func__, prof_idx);
 
 	/* update mixer profile */
 	tfa98xx_mixer_profile = new_profile;
@@ -2848,19 +2848,10 @@ static void tfa98xx_monitor(struct work_struct *work)
 		val = snd_soc_read(tfa98xx->codec, TFA98XX_TDM_CONFIG0);
 		pr_debug("TDM_CONFIG0: 0x%04x\n", val);
 
-		// Monitoring OTP/OCP/UVP
-		val = snd_soc_read(tfa98xx->codec, TFA98XX_STATUS_FLAGS0);
-		pr_info("TFA98XX_STATUS_FLAGS0: 0x%04x\n", val);
-		val = snd_soc_read(tfa98xx->codec, TFA98XX_STATUS_FLAGS3);
-		pr_info("TFA98XX_STATUS_FLAGS3: 0x%04x\n", val);
-
-		// Monotoring TEMPS
-		val = snd_soc_read(tfa98xx->codec, TFA98XX_TEMPERATURE);
-		pr_info("TFA98XX_TEMPERATURE: 0x%04x\n", val);
 	}
 
 	/* reschedule */
-	queue_delayed_work(tfa98xx->tfa98xx_wq, &tfa98xx->monitor_work, 5*HZ);
+	//queue_delayed_work(tfa98xx->tfa98xx_wq, &tfa98xx->monitor_work, 5*HZ);
 }
 
 static void tfa98xx_dsp_init(struct tfa98xx *tfa98xx)
@@ -3289,7 +3280,7 @@ static int tfa98xx_mute(struct snd_soc_dai *dai, int mute, int stream)
 static int _tfa98xx_mute(struct tfa98xx *tfa98xx, int mute, int stream)
 {
 #if defined(TFA_FORCE_TO_STOP_RAM_AT_OVERLAPPED_OUTPUT)
-	pr_info("%s: ram_exception=%d, mute=%d\n", __func__, ram_exception, mute);
+	pr_info("%s: ram_exception=%d, mute=%d stream=%d\n", __func__, ram_exception, mute, stream);
 #endif
 
 	if (mute) {
@@ -3343,7 +3334,7 @@ static int _tfa98xx_mute(struct tfa98xx *tfa98xx, int mute, int stream)
 
 		// wait until when DSP is ready for initialization
 		if (tfa98xx->pstream != 0 || tfa98xx->samstream != 0) {
-			pr_info("unmute is triggered\n");
+			pr_debug("unmute is triggered\n");
 		} else {
 			pr_info("unmute is suspended when only cstream is on\n");
 			return 0;

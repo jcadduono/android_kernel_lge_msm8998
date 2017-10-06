@@ -16,14 +16,9 @@
 	status = "okay";
 };
 
-&soc {
-	lge,vzw_req {
-		compatible = "lge,vzw_req";
-		lge,under_chg_current = <450>;
-	};
-
-	lge,store_mode {
-		lge,llk_max = <35>;
-		lge,llk_min = <30>;
+&i2c_1 { /* BLSP1 QUP1 */
+	idtp9223-charger@61 {               /* Slave driver and slave Address */
+		idt,fod-register = <0x79>;
+		idt,fod-value = <0x0E>;
 	};
 };

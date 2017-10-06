@@ -34,7 +34,7 @@
 
 		crash_fb_mem: crash_fb_mem@b0100000 {
 			linux,contiguous-region;
-			reg = <0 0xb0100000 0 0xc00000>;
+			reg = <0 0xb0100000 0 0x1800000>;
 			label = "crash_fb_mem";
 		};
 	};
@@ -59,7 +59,7 @@
 	crash_fb {
 		compatible = "crash_fb";
 		mem-addr = <0xb0100000>;
-		mem-size = <0xc00000>;
+		mem-size = <0x1800000>;
 	};
 
 	bootlog {
@@ -180,8 +180,8 @@
 
 &mdss_dp_ctrl {
 	pinctrl-names = "mdss_dp_active", "mdss_dp_sleep";
-	pinctrl-0 = <&mdss_dp_aux_active &mdss_dp_usbplug_cc_active>;
-	pinctrl-1 = <&mdss_dp_aux_suspend &mdss_dp_usbplug_cc_suspend>;
+	pinctrl-0 = <&mdss_dp_aux_oe_active &mdss_dp_aux_sel_active &mdss_dp_usbplug_cc_active>;
+	pinctrl-1 = <&mdss_dp_aux_oe_suspend &mdss_dp_aux_sel_suspend &mdss_dp_usbplug_cc_suspend>;
 	qcom,aux-en-gpio = <&tlmm 100 0>;
 	qcom,aux-sel-gpio = <&tlmm 80 0>;
 	qcom,usbplug-cc-gpio = <&tlmm 38 0>;

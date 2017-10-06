@@ -2557,8 +2557,13 @@ static int wcd_mbhc_initialise(struct wcd_mbhc *mbhc)
 		/* Insertion debounce set to 48ms */
 		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_INSREM_DBNC, 4);
 	} else {
+#ifdef CONFIG_MACH_LGE
+        /* Insertion debounce set to 128ms */
+		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_INSREM_DBNC, 7);
+#else
 		/* Insertion debounce set to 96ms */
 		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_INSREM_DBNC, 6);
+#endif /* CONFIG_MACH_LGE */
 	}
 
 	/* Button Debounce set to 16ms */
@@ -3185,6 +3190,36 @@ static const struct file_operations codec_debug_ops = {
 	.read = mbhc_debug_read
 };
 #endif
+#if defined(CONFIG_SND_SOC_ES9218P) && defined(CONFIG_MACH_MSM8998_JOAN)
+struct wcd_mbhc *ESSMbhc;
+static int force_set_clamper = 0;
+void wcd_set_clamp_on_mic(int value)
+{
+    struct wcd_mbhc *mbhc = ESSMbhc;
+    s16 reg_value = -1;
+
+    if( mbhc != NULL ) {
+        WCD_MBHC_REG_READ(WCD_MBHC_MICB_CTRL, reg_value);
+
+        // if mic bias 2 is enabled
+        if( reg_value == 1 || reg_value == 2 ) {
+            // disable clamper on mic
+            if( value == 0 ) {
+                WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_MIC_CLAMP_CTL, 0);
+                force_set_clamper = 1;
+                pr_err("%s: disable clamper on mic, reg_value=%d\n", __func__, reg_value);
+            }
+        }
+
+        // enable clamper on mic
+        if( force_set_clamper == 1 && value == 1 ) {
+            WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_MIC_CLAMP_CTL, 2);
+            force_set_clamper = 0;
+            pr_err("%s: enable clamper on mic.\n", __func__);
+        }
+    }
+}
+#endif /* CONFIG_SND_SOC_ES9218P */
 /*
  * wcd_mbhc_init : initialize MBHC internal structures.
  *
@@ -3323,6 +3358,9 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_codec *codec,
 		switch_dev_unregister(&mbhc->sdev);
 	}
 #endif
+#if defined(CONFIG_SND_SOC_ES9218P) && defined(CONFIG_MACH_MSM8998_JOAN)
+    ESSMbhc = mbhc;
+#endif /* CONFIG_SND_SOC_ES9218P */
 #ifdef CONFIG_DEBUG_FS
 	debugMbhc = mbhc;
 

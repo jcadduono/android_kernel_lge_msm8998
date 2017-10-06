@@ -327,6 +327,7 @@ struct msm_fb_data_type {
 	u32 unset_bl_level;
 #if defined(CONFIG_LGE_DISPLAY_AMBIENT_SUPPORTED)
 	u32 unset_bl_level_ex;
+	bool allow_bl_update_ex;
 #endif
 	bool allow_bl_update;
 	u32 bl_level_scaled;

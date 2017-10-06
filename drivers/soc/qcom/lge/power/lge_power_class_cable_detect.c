@@ -519,6 +519,15 @@ static void lge_cable_detect_external_power_changed(struct lge_power *lpc)
 		else
 			cd->chg_type = POWER_SUPPLY_TYPE_UNKNOWN;
 
+		if (cd->chg_type == POWER_SUPPLY_TYPE_USB) {
+			rc = cd->usb_psy->desc->get_property(
+					cd->usb_psy, POWER_SUPPLY_PROP_PD_ACTIVE, &ret);
+			if (rc >= 0 && ret.intval) {
+				pr_info("Change chg_type from usb to PD\n");
+				cd->chg_type = POWER_SUPPLY_TYPE_USB_PD;
+			}
+		}
+
 		if (cd->is_factory_cable) {
 			cd->modified_usb_ma = cd->usb_current*1000;
 			cd->modified_ibat_ma = cd->ibat_current*1000;

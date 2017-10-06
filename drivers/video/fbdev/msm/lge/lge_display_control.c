@@ -16,7 +16,9 @@
 
 #include <linux/delay.h>
 #include "lge_display_control.h"
+#include "../mdss_fb.h"
 
+extern struct msm_fb_data_type *mfd_primary_base;
 extern struct mdss_panel_data *pdata_base;
 extern int mdss_dsi_parse_dcs_cmds(struct device_node *np,
 		struct dsi_panel_cmds *pcmds, char *cmd_key, char *link_key);
@@ -320,6 +322,8 @@ void mdss_dsi_panel_apply_settings(struct mdss_dsi_ctrl_pdata *ctrl,
 {
 	int vr_enable;
 	struct lge_mdss_dsi_ctrl_pdata *lge_ctrl_pdata = NULL;
+	struct dsi_panel_cmds *pre_lp_cmds;
+	struct dsi_panel_cmds *post_lp_cmds;
 
 	if (ctrl == NULL) {
 		pr_err("Invalid input\n");
@@ -334,14 +338,28 @@ void mdss_dsi_panel_apply_settings(struct mdss_dsi_ctrl_pdata *ctrl,
 	}
 
 	vr_enable = (pcmds->cmds[0].payload[1] & 0x08);
+	pr_info("vr persist %s\n", (vr_enable ? "enabled" : "disabled"));
+
 	if (vr_enable) {
 		lge_ctrl_pdata->vr_status = 0x01;
+		pre_lp_cmds = &ctrl->pre_lp_on_cmds;
+		post_lp_cmds = &ctrl->post_lp_on_cmds;
+
+		if (pre_lp_cmds->cmd_cnt)
+			mdss_dsi_panel_cmds_send(ctrl, pre_lp_cmds, CMD_REQ_COMMIT);
 		lge_display_control_store(ctrl, true);
-		pr_info("vr status %d \n", lge_ctrl_pdata->vr_status);
+		if (post_lp_cmds->cmd_cnt)
+			mdss_dsi_panel_cmds_send(ctrl, post_lp_cmds, CMD_REQ_COMMIT);
 	} else {
 		lge_ctrl_pdata->vr_status = 0x00;
+		pre_lp_cmds = &ctrl->pre_lp_off_cmds;
+		post_lp_cmds = &ctrl->post_lp_off_cmds;
+
+		if (pre_lp_cmds->cmd_cnt)
+			mdss_dsi_panel_cmds_send(ctrl, pre_lp_cmds, CMD_REQ_COMMIT);
 		lge_display_control_store(ctrl, true);
-		pr_info("vr status %d \n", lge_ctrl_pdata->vr_status);
+		if (post_lp_cmds->cmd_cnt)
+			mdss_dsi_panel_cmds_send(ctrl, post_lp_cmds, CMD_REQ_COMMIT);
 	}
 }
 #endif /* CONFIG_LGE_DISPLAY_VR_MODE */
@@ -639,6 +657,10 @@ void lge_mdss_dsi_bc_dim_work(struct work_struct *work)
 
 	ctrl_pdata = container_of(pdata_base, struct mdss_dsi_ctrl_pdata,
 			panel_data);
+	if(ctrl_pdata == NULL) {
+		pr_err("invalid ctrl_pdata\n");
+		return;
+	}
 
 	pdata = &ctrl_pdata->panel_data;
 	if (!pdata) {
@@ -647,13 +669,13 @@ void lge_mdss_dsi_bc_dim_work(struct work_struct *work)
 	}
 
 	if (mdss_panel_is_power_on_lp(pdata->panel_info.panel_power_state)) {
-		cancel_delayed_work(&lge_ctrl_pdata->bc_dim_work);
-		pr_info("skip BC Ctrl\n");
+		pr_info("skip brightness dimming control\n");
+		return;
 	} else {
 		lge_ctrl_pdata->bc_dim_cmds.cmds[0].payload[1] = BC_DIM_OFF;
 		mdss_dsi_panel_cmds_send(ctrl_pdata, &lge_ctrl_pdata->bc_dim_cmds,
 			CMD_REQ_COMMIT);
-		pr_info("VE Mode BC: 0x%x \n",
+		pr_info("VE Mode brightness control : 0x%x \n",
 			lge_ctrl_pdata->bc_dim_cmds.cmds[0].payload[1]);
 	}
 	return;
@@ -672,8 +694,12 @@ static ssize_t video_enhancement_get(struct device *dev,
 
 	ctrl = container_of(pdata_base, struct mdss_dsi_ctrl_pdata,
 			panel_data);
-	lge_ctrl_pdata = ctrl->lge_ctrl_pdata;
+	if(ctrl == NULL) {
+		pr_err("invalid ctrl\n");
+		return -EINVAL;
+	}
 
+	lge_ctrl_pdata = ctrl->lge_ctrl_pdata;
 	if (lge_ctrl_pdata == NULL) {
 		pr_err("Invalid input\n");
 		return -EINVAL;
@@ -690,20 +716,31 @@ static ssize_t video_enhancement_set(struct device *dev,
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct lge_mdss_dsi_ctrl_pdata *lge_ctrl_pdata = NULL;
 
-	if (pdata_base == NULL) {
+	if (pdata_base == NULL || mfd_primary_base == NULL) {
 		pr_err("Invalid input data\n");
 		return -EINVAL;
 	}
+
+	mutex_lock(&mfd_primary_base->mdss_sysfs_lock);
+
 	if (pdata_base->panel_info.panel_power_state == 0) {
 		pr_err("Panel off state. Ignore screen_mode set cmd\n");
+		mutex_unlock(&mfd_primary_base->mdss_sysfs_lock);
 		return -EINVAL;
 	}
+
 	ctrl =  container_of(pdata_base, struct mdss_dsi_ctrl_pdata,
 			panel_data);
-	lge_ctrl_pdata = ctrl->lge_ctrl_pdata;
+	if(ctrl == NULL) {
+		pr_err("invalid ctrl\n");
+		mutex_unlock(&mfd_primary_base->mdss_sysfs_lock);
+		return -EINVAL;
+	}
 
+	lge_ctrl_pdata = ctrl->lge_ctrl_pdata;
 	if (lge_ctrl_pdata == NULL) {
 		pr_err("Invalid input\n");
+		mutex_unlock(&mfd_primary_base->mdss_sysfs_lock);
 		return -EINVAL;
 	}
 
@@ -730,6 +767,8 @@ static ssize_t video_enhancement_set(struct device *dev,
 	mdss_fb_set_bl_brightness(&backlight_led, backlight_led.brightness);
 
 	schedule_delayed_work(&lge_ctrl_pdata->bc_dim_work, BC_DIM_TIME);
+
+	mutex_unlock(&mfd_primary_base->mdss_sysfs_lock);
 
 	pr_info("VE Mode bl_lvl : %d, BC DIM: 0x%x, BC : 0x%x\n",
 			backlight_led.brightness, lge_ctrl_pdata->bc_dim_cmds.cmds[0].payload[1],

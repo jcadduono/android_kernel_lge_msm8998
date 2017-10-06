@@ -1000,7 +1000,7 @@ static void ftm4_get_tci_info(struct device *dev)
 	TOUCH_TRACE();
 
 	ts->tci.info[TCI_1].tap_count = 2;
-	ts->tci.info[TCI_1].min_intertap = 0;
+	ts->tci.info[TCI_1].min_intertap = 3;
 	ts->tci.info[TCI_1].max_intertap = 70;
 	ts->tci.info[TCI_1].touch_slop = 10;
 	ts->tci.info[TCI_1].tap_distance = 10;
@@ -1065,7 +1065,7 @@ static void ftm4_get_swipe_info(struct device *dev)
 	d->swipe.info[SWIPE_D].border_area.y2 = 30;
 	d->swipe.info[SWIPE_D].debug_enable = false;
 
-	d->swipe.info[SWIPE_R].distance = 5;
+	d->swipe.info[SWIPE_R].distance = 7;
 	d->swipe.info[SWIPE_R].ratio_thres = 100;
 	d->swipe.info[SWIPE_R].ratio_distance = 2;
 	d->swipe.info[SWIPE_R].ratio_period = 5;
@@ -1088,7 +1088,7 @@ static void ftm4_get_swipe_info(struct device *dev)
 	d->swipe.info[SWIPE_R].border_area.y2 = 100;
 	d->swipe.info[SWIPE_R].debug_enable = false;
 
-	d->swipe.info[SWIPE_L].distance = 5;
+	d->swipe.info[SWIPE_L].distance = 7;
 	d->swipe.info[SWIPE_L].ratio_thres = 100;
 	d->swipe.info[SWIPE_L].ratio_distance = 2;
 	d->swipe.info[SWIPE_L].ratio_period = 5;
@@ -1716,7 +1716,7 @@ static int ftm4_get_pure_autotune_status(struct device *dev)
 	d->pure_autotune_info = data[1];
 
 	TOUCH_I("%s: pure_autotune : %s\n", __func__, d->pure_autotune
-			? ((d->pure_autotune_info == 0) ? "0 (D)" : "1 (E)")
+			? ((d->pure_autotune_info == 1) ? "1 (E)" : "0 (D)")
 			: "0");
 	TOUCH_I("%s: d->pure_autotune = %d, d->pure_autotune_info = %d\n",
 			__func__, d->pure_autotune, d->pure_autotune_info);
@@ -1795,6 +1795,8 @@ int ftm4_ic_info(struct device *dev)
 			TOUCH_E("failed to read reg (ret = %d)\n", ret);
 			goto error;
 		}
+
+		TOUCH_I("%s: read data[%02X]\n", __func__, data[0]);
 
 		if (data[0] == EVENTID_INTERNAL_RELEASE_INFO) {
 			d->ic_fw_ver.internal_ver = (data[3] << 8) + data[4];
@@ -1987,6 +1989,10 @@ static int ftm4_lpwg_mode(struct device *dev)
 				ftm4_swipe_enable(dev, true);
 				ftm4_gesture_set(dev, true);
 				ftm4_set_low_power_mode(dev);
+				if (d->lpwg_abs.enable) {
+					TOUCH_I("%s: enable lpwg_abs\n", __func__);
+					ftm4_lpwg_abs_enable(d->dev, d->lpwg_abs.enable);
+				}
 			}
 		}
 		return 0;
@@ -2153,6 +2159,29 @@ static int ftm4_ime_status(struct device *dev)
 		buf[0] = 0xC2;
 
 	ret = ftm4_reg_write(dev, buf, 4);
+	if (ret < 0)
+		TOUCH_E("failed to write reg (ret = %d)\n", ret);
+
+	return ret;
+}
+
+static int ftm4_vr_status(struct device *dev)
+{
+	struct ftm4_data *d = to_ftm4_data(dev);
+	u8 buf[5] = {0x00, 0x00, 0x00, 0x40, 0x00};
+	int ret = 0;
+	int vr_state = d->vr_status;
+
+	TOUCH_TRACE();
+
+	TOUCH_I("%s: VR: %d\n", __func__, vr_state);
+
+	if (vr_state)
+		buf[0] = 0xC1;
+	else
+		buf[0] = 0xC2;
+
+	ret = ftm4_reg_write(dev, buf, 5);
 	if (ret < 0)
 		TOUCH_E("failed to write reg (ret = %d)\n", ret);
 
@@ -2810,7 +2839,7 @@ static int ftm4_fw_wait_for_event(struct device *dev, u8 eid)
 	return ret;
 }
 
-static void ftm4_osc_trim_cmd(struct device *dev)
+void ftm4_osc_trim_cmd(struct device *dev)
 {
 	TOUCH_TRACE();
 
@@ -2907,7 +2936,7 @@ static void ftm4_execute_autotune(struct device *dev)
 	TOUCH_I("%s: d->pure_autotune = %d , d->old_afe_ver = 0x%02X , d->afe_ver = 0x%02X\n",
 			__func__, d->pure_autotune, d->afe.old_ver, d->afe.ver);
 
-	if (d->pure_autotune && (d->afe.old_ver >= d->afe.ver)) {
+	if (d->pure_autotune) {
 		TOUCH_I("%s: skip autotune\n", __func__);
 		return;
 	}
@@ -2924,7 +2953,7 @@ static void ftm4_execute_autotune(struct device *dev)
 	TOUCH_I("%s: autotune end\n", __func__);
 }
 
-static void ftm4_execute_force_autotune(struct device *dev)
+void ftm4_execute_force_autotune(struct device *dev)
 {
 	TOUCH_TRACE();
 
@@ -3202,12 +3231,11 @@ static int ftm4_fb_notifier_callback(struct notifier_block *self,
 	return 0;
 }
 
-static int ftm4_init(struct device *dev)
+int ftm4_init(struct device *dev)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct ftm4_data *d = to_ftm4_data(dev);
 	int ret = 0;
-	int ic_info_ret = 0;
 
 	TOUCH_TRACE();
 
@@ -3216,7 +3244,6 @@ static int ftm4_init(struct device *dev)
 		fb_unregister_client(&ts->fb_notif);
 		ts->fb_notif.notifier_call = ftm4_fb_notifier_callback;
 		fb_register_client(&ts->fb_notif);
-		ic_info_ret = ftm4_ic_info(dev);
 	}
 
 	if (atomic_read(&d->power) == POWER_OFF) {
@@ -3235,12 +3262,20 @@ static int ftm4_init(struct device *dev)
 	if (ret < 0)
 		TOUCH_E("failed to ftm4_wait_for_ready (ret = %d)\n", ret);
 
-	if (ic_info_ret < 0) {
-		TOUCH_E("failed to ftm4_ic_info (ret = %d)\n", ic_info_ret);
+	if (atomic_read(&ts->state.core) == CORE_PROBE)
+		d->ic_info_ret = ftm4_ic_info(dev);
+
+	if (d->ic_info_ret < 0) {
+		TOUCH_E("failed to ftm4_ic_info (ret = %d)\n", d->ic_info_ret);
 		touch_interrupt_control(dev, INTERRUPT_DISABLE);
 		ftm4_power(dev, POWER_OFF);
 		ftm4_power(dev, POWER_ON);
 		touch_msleep(ts->caps.hw_reset_delay);
+		ftm4_system_reset(dev);
+		ftm4_wait_for_ready(dev);
+		d->ic_info_ret = ftm4_ic_info(dev);
+		if (d->ic_info_ret < 0)
+			TOUCH_E("retry failed to read ftm4_ic_info (ret = %d)\n", d->ic_info_ret);
 	}
 
 	if (atomic_read(&ts->state.core) == CORE_NORMAL)
@@ -3257,6 +3292,7 @@ static int ftm4_init(struct device *dev)
 	ftm4_usb_status(dev);
 	ftm4_wireless_status(dev);
 	ftm4_ime_status(dev);
+	ftm4_vr_status(dev);
 	ftm4_lpwg_force_cal_debug(dev);
 	/* incoming call status reg update */
 
@@ -3980,6 +4016,46 @@ static ssize_t store_ta_detect_pin(struct device *dev,
 	return count;
 }
 
+static ssize_t show_vr_status(struct device *dev, char *buf)
+{
+	struct ftm4_data *d = to_ftm4_data(dev);
+	int ret = 0;
+
+	TOUCH_TRACE();
+
+	ret += snprintf(buf + ret, PAGE_SIZE, "%d\n", d->vr_status);
+	TOUCH_I("%s: vr_status = %d\n", __func__, d->vr_status);
+
+	return ret;
+}
+
+static ssize_t store_vr_status(struct device *dev,
+		const char *buf, size_t count)
+{
+	struct touch_core_data *ts = to_touch_core(dev);
+	struct ftm4_data *d = to_ftm4_data(dev);
+	int value = 0;
+
+	TOUCH_TRACE();
+
+	if (kstrtos32(buf, 10, &value) < 0)
+		return count;
+
+	if ((value > 1) || (value < 0)) {
+		TOUCH_E("invalid vr_status(%d)\n", value);
+		return count;
+	}
+
+	TOUCH_I("%s: value = %d\n", __func__, value);
+	d->vr_status = value;
+
+	mutex_lock(&ts->lock);
+	ftm4_vr_status(dev);
+	mutex_unlock(&ts->lock);
+
+	return count;
+}
+
 static ssize_t show_swipe_enable(struct device *dev, char *buf)
 {
 	struct ftm4_data *d = to_ftm4_data(dev);
@@ -4347,7 +4423,7 @@ static ssize_t show_autotune(struct device *dev, char *buf)
 	} else {
 		ret += snprintf(buf + ret, PAGE_SIZE,
 				"pure_autotune : %s\n", d->pure_autotune
-				? ((d->pure_autotune_info == 0) ? "0 (D)" : "1 (E)")
+				? ((d->pure_autotune_info == 1) ? "1 (E)" : "0 (D)")
 				: "0");
 	}
 	return ret;
@@ -4431,6 +4507,7 @@ exit:
 
 static TOUCH_ATTR(gpio_pin, show_gpio_pin, NULL);
 static TOUCH_ATTR(ta_detect_pin, show_ta_detect_pin, store_ta_detect_pin);
+static TOUCH_ATTR(vr_status, show_vr_status, store_vr_status);
 static TOUCH_ATTR(swipe_enable, show_swipe_enable, store_swipe_enable);
 static TOUCH_ATTR(swipe_tool, show_swipe_tool, store_swipe_tool);
 static TOUCH_ATTR(lpwg_abs, show_lpwg_abs, store_lpwg_abs);
@@ -4444,6 +4521,7 @@ static TOUCH_ATTR(pure_autotune, show_pure_autotune, NULL);
 static struct attribute *ftm4_attribute_list[] = {
 	&touch_attr_gpio_pin.attr,
 	&touch_attr_ta_detect_pin.attr,
+	&touch_attr_vr_status.attr,
 	&touch_attr_swipe_enable.attr,
 	&touch_attr_swipe_tool.attr,
 	&touch_attr_lpwg_abs.attr,
@@ -4484,6 +4562,7 @@ error:
 
 static int ftm4_get_cmd_version(struct device *dev, char *buf)
 {
+	struct touch_core_data *ts = to_touch_core(dev);
 	struct ftm4_data *d = to_ftm4_data(dev);
 	int offset = 0;
 	int ret = 0;
@@ -4491,6 +4570,16 @@ static int ftm4_get_cmd_version(struct device *dev, char *buf)
 	int str_ret = 0;
 
 	TOUCH_TRACE();
+
+	if (atomic_read(&ts->state.debug_option_mask) & DEBUG_OPTION_9) {
+		ftm4_system_reset(dev);
+		touch_msleep(20);
+		ftm4_wait_for_ready(dev);
+
+		ftm4_osc_trim_cmd(dev);
+		ftm4_execute_force_autotune(dev);
+		ftm4_init(dev);
+	}
 
 	ret = ftm4_ic_info(dev);
 
@@ -4534,7 +4623,7 @@ static int ftm4_get_cmd_version(struct device *dev, char *buf)
 
 	offset += snprintf(buf + offset, PAGE_SIZE - offset,
 			"pure_autotune : %s\n", d->pure_autotune
-			? ((d->pure_autotune_info == 0) ? "0 (D)" : "1 (E)")
+			? ((d->pure_autotune_info == 1) ? "1 (E)" : "0 (D)")
 			: "0");
 
 	return offset;

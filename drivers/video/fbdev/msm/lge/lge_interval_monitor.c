@@ -131,15 +131,6 @@ static int lge_interval_start_thread(void)
 	return ret;
 }
 
-static void lge_interval_stop_thread(void)
-{
-	pr_debug("%pS: stop lge_interval thread\n",
-		 __builtin_return_address(0));
-	kthread_stop(lge_interval_thread);
-	wake_up_all(&imon.interval_wait_q);
-	lge_interval_thread = NULL;
-}
-
 int lge_interval_notify(ktime_t cur_us)
 {
 	if (!CHECK_BIT(imon.status_bits, BIT(INIT)))
@@ -271,8 +262,6 @@ int lge_interval_enable(int enable)
 		} else {
 			CLR_BIT(imon.status_bits, ENABLE);
 			mutex_unlock(&imon.interval_lock);
-			if (lge_interval_thread)
-				lge_interval_stop_thread();
 		}
 	} else {
 		mutex_unlock(&imon.interval_lock);

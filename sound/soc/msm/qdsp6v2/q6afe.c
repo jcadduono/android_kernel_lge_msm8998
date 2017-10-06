@@ -1509,6 +1509,10 @@ static int afe_send_port_topology_id(u16 port_id)
 		pr_info("%s: [AUDIO_BSP] topology_id[0x%x] port_id[0x%x] \n", __func__, topology_id, port_id);
 		topology_id = AFE_RX_NONE_TOPOLOGY;
 	}
+	if((port_id == AFE_PORT_ID_TERTIARY_MI2S_TX) && (topology_id != AFE_TX_MODULE_ID_TFADSP)) {
+		pr_info("%s: [AUDIO_BSP] topology_id[0x%x] port_id[0x%x] \n", __func__, topology_id, port_id);
+		topology_id = AFE_TX_MODULE_ID_TFADSP;
+	}
 #endif
 	config.port.topology.topology_id = topology_id;
 

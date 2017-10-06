@@ -435,6 +435,7 @@ static ssize_t store_sp_link_touch_off(struct device *dev,
 		TOUCH_I("SP Mirroring Connected\n");
 	} else if(atomic_read(&ts->state.sp_link) == SP_DISCONNECT) {
 		touch_interrupt_control(ts->dev, INTERRUPT_ENABLE);
+		mod_delayed_work(ts->wq, &ts->init_work, 0);
 		TOUCH_I("SP Mirroring Disconnected\n");
 	}
 

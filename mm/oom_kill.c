@@ -457,6 +457,8 @@ void exit_oom_victim(void)
  */
 bool oom_killer_disable(void)
 {
+	signed long ret;
+
 	/*
 	 * Make sure to not race with an ongoing OOM killer
 	 * and that the current is not the victim.
@@ -470,7 +472,12 @@ bool oom_killer_disable(void)
 	oom_killer_disabled = true;
 	mutex_unlock(&oom_lock);
 
-	wait_event(oom_victims_wait, !atomic_read(&oom_victims));
+	ret = wait_event_interruptible_timeout(oom_victims_wait,
+			!atomic_read(&oom_victims), 20 * HZ);
+	if (ret <= 0) {
+		oom_killer_enable();
+		return false;
+	}
 
 	return true;
 }

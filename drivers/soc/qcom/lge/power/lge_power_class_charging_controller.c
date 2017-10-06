@@ -712,6 +712,7 @@ static int lge_power_lge_cc_get_property(struct lge_power *lpc,
 
 		case LGE_POWER_PROP_VOTE_REASON:
 			val->intval = lgcc_vote_fcc_reason;
+			break;
 
 		default:
 			ret_val = -EINVAL;

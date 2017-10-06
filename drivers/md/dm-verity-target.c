@@ -358,6 +358,10 @@ static int verity_verify_level(struct dm_verity *v, struct dm_verity_io *io,
 					   hash_block, data, NULL) == 0)
 			aux->hash_verified = 1;
 		else{
+#ifdef CONFIG_LGE_DM_VERITY_RECOVERY
+			u8 *ddata; /* direct read data */
+#endif
+
 #ifdef DM_VERITY_MEMORY_DUMP
 			DMERR("metadata block %lu is corrupted", hash_block);
 			DMERR("io : %p, v : %p", io, v);
@@ -373,6 +377,74 @@ static int verity_verify_level(struct dm_verity *v, struct dm_verity_io *io,
 							data, 1 << v->hash_dev_block_bits);
 			}
 #endif // DM_VERITY_MEMORY_DUMP
+
+#ifdef CONFIG_LGE_DM_VERITY_RECOVERY
+			dm_verity_recovery_lock(v->bufio);
+
+			// pre-check wheather already recovered
+			r = verity_hash(v, verity_io_hash_desc(v, io),
+					data, 1 << v->hash_dev_block_bits,
+					verity_io_real_digest(v, io));
+
+			if (likely(r >= 0)) {
+				if (memcmp(verity_io_real_digest(v, io), want_digest,
+						  v->digest_size) == 0) {
+					DMERR("metadata block %lu is already recovered", hash_block);
+					dm_verity_recovery_unlock(v->bufio);
+					goto success_proc;
+				}
+			}
+
+			// try to recover
+			ddata = dm_direct_read(hash_block, v->bufio);
+			if(ddata){
+				u8* real_digest = kmalloc(v->digest_size, GFP_KERNEL);
+
+				if(real_digest) {
+					r = verity_hash(v, verity_io_hash_desc(v, io),
+							ddata, 1 << v->hash_dev_block_bits,
+							real_digest);
+					if (unlikely(r < 0)) {
+						kfree(real_digest);
+						goto direct_read_error;
+					}
+				}
+				else
+					goto direct_read_error;
+
+				if (likely(memcmp(real_digest, want_digest,
+					  v->digest_size) == 0)) {
+					DMERR("metadata block %lu is recovered successfully", hash_block);
+
+					memcpy(verity_io_real_digest(v, io), real_digest, v->digest_size);
+					memcpy(data, ddata, 1 << v->hash_dev_block_bits);
+					aux->hash_verified = 1;
+
+					kfree(real_digest);
+					dm_direct_free(ddata);
+					dm_verity_recovery_unlock(v->bufio);
+					goto success_proc;
+				}
+				else {
+					verity_print_dump("recovery failed! real_digest", DUMP_PREFIX_OFFSET,
+								real_digest, v->digest_size);
+				}
+				kfree(real_digest);
+			}
+
+direct_read_error:
+			DMERR("metadata block %lu is recovered fail (ddata:%p)", hash_block, ddata);
+
+			if(ddata) {
+				verity_print_dump("block", DUMP_PREFIX_ADDRESS,
+						ddata, 1 << v->hash_dev_block_bits);
+			}
+
+			if(ddata)
+				dm_direct_free(ddata);
+
+			dm_verity_recovery_unlock(v->bufio);
+#endif
 			if (verity_handle_err(v,
 					   DM_VERITY_BLOCK_TYPE_METADATA,
 					   hash_block)) {
@@ -382,6 +454,9 @@ static int verity_verify_level(struct dm_verity *v, struct dm_verity_io *io,
 	}
 	}
 
+#ifdef CONFIG_LGE_DM_VERITY_RECOVERY
+success_proc:
+#endif
 	data += offset;
 	memcpy(want_digest, data, v->digest_size);
 	r = 0;

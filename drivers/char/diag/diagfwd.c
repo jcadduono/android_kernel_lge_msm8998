@@ -512,6 +512,24 @@ void diag_update_md_clients(unsigned int type)
 	wake_up_interruptible(&driver->wait_q);
 	mutex_unlock(&driver->diagchar_mutex);
 }
+
+#ifdef CONFIG_LGE_USB_DIAG_LOCK_SPR
+void diag_update_sleeping_process_atd(int data_type)
+{
+	int i;
+
+	mutex_lock(&driver->diagchar_mutex);
+	for (i = 0; i < driver->num_clients; i++)
+		if (!strcmp(driver->client_map[i].name, "atd")) {
+			pr_debug("%s: process atd found\n", __func__);
+			driver->data_ready[i] |= data_type;
+			break;
+		}
+	wake_up_interruptible(&driver->wait_q);
+	mutex_unlock(&driver->diagchar_mutex);
+}
+#endif
+
 void diag_update_sleeping_process(int process_id, int data_type)
 {
 	int i;
@@ -531,6 +549,22 @@ static int diag_send_data(struct diag_cmd_reg_t *entry, unsigned char *buf,
 {
 	if (!entry)
 		return -EIO;
+
+#ifdef CONFIG_LGE_USB_DIAG_LOCK_SPR
+	if ((*(unsigned char *)(buf)) == 0x27) {
+		if (((*(unsigned char *)(buf+1)) == 0x16) && ((*(unsigned char *)(buf+2)) == 0x84)) {
+			diag_update_pkt_buffer(buf, len, PKT_TYPE);
+			diag_update_sleeping_process_atd(PKT_TYPE);
+		}
+
+		if (entry->proc == APPS_DATA) {
+			pr_info("%s: forwarding DIAG_NV_WRITE_F to PERIPHERAL_MODEM\n", __func__);
+			return diagfwd_write(0, TYPE_CMD, buf, len); /* PERIPHERAL_MODEM:0 */
+		} else {
+			return diagfwd_write(entry->proc, TYPE_CMD, buf, len);
+		}
+	}
+#endif
 
 	if (entry->proc == APPS_DATA) {
 		diag_update_pkt_buffer(buf, len, PKT_TYPE);
@@ -1194,6 +1228,15 @@ int diag_process_apps_pkt(unsigned char *buf, int len,
 			driver->hdlc_disabled = 1;
 		diag_update_md_clients(HDLC_SUPPORT_TYPE);
 		mutex_unlock(&driver->hdlc_disable_mutex);
+		return 0;
+	}
+#endif
+
+#if defined(CONFIG_MACH_MSM8998_JOAN_GLOBAL_LDU)
+	if ((*buf == 0x29) && (*(buf+1) == 0x01)) {
+		for (i = 0; i < 5; i++)
+			*(driver->apps_rsp_buf+i) = *(buf+i);
+		diag_send_rsp(driver->apps_rsp_buf, 3, info);
 		return 0;
 	}
 #endif

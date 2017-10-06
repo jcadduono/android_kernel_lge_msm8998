@@ -3096,6 +3096,10 @@ static int lge_dsp_sound_offload_playback_number_put(struct snd_kcontrol *kcontr
 	struct snd_soc_component *comp = snd_kcontrol_chip(kcontrol);
         int pcm_device_id = (int)ucontrol->value.integer.value[0];
 
+	if (pcm_device_id < 0 || pcm_device_id > comp->card->num_links) {
+		pr_err(" %s Invalid arguments pcm_device_id %d lgesound_current_be_id %d ", __func__, pcm_device_id, lgesound_current_be_id);
+		return 0;
+	}
         lgesound_current_be_id = comp->card->dai_link[pcm_device_id].be_id;
         if (lgesoundeffect_enable == 1)
                 lgesound_lge_effect_be_id = lgesound_current_be_id;
@@ -3296,8 +3300,13 @@ static int lge_dsp_sound_effect_geq_put(struct snd_kcontrol *kcontrol,
         struct snd_compr_stream *cstream = pdata->cstream[lgesound_lge_effect_be_id];
         struct msm_compr_audio *prtd = NULL;
         int rc;
+        int effect_ses = (int)ucontrol->value.integer.value[0];
+        if(effect_ses < 0 || effect_ses > 6) {
+                pr_err(" %s Invalid arguments effect_ses %d ", __func__, effect_ses);
+                return -EINVAL;
+        }
 
-        lgesoundeffect_geq_gain[(int)ucontrol->value.integer.value[0]] = (int)ucontrol->value.integer.value[1];
+        lgesoundeffect_geq_gain[effect_ses] = (int)ucontrol->value.integer.value[1];
         if (!cstream || cstream->runtime == NULL) {
                 pr_err("%s: compress stream is not open status, so ignore this cmd\n", __func__);
                 return -EINVAL;

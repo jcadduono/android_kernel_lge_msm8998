@@ -187,7 +187,7 @@
 			lge,cable-330k 		= <1050001 1150000 1800  500 1500>;
 			lge,cable-620k 		= <1150001 1380000 1800  500 1500>;
 			lge,cable-910k 		= <1380001 1630000  900  900  500>;
-			lge,cable-none 		= <1630001 1900000 2000  500 1800>;
+			lge,cable-none 		= <1630001 1900000 2000  500 2000>;
 
 			lge,fastchg_usb_icl = <3000>;
 			lge,fastchg_fcc_icl = <3300>;
@@ -252,9 +252,9 @@
 			lge,hvdcp3-supported;
 			lge,pd_current = <3300>;
 			lge,pd-supported;
-			lge,wlc_current = <1000>;
+			lge,wlc_current = <1050>;
 			lge,wlc-supported;
-			lge,wlc_fast_current = <1600>;
+			lge,wlc_fast_current = <1350>;
 			lge,wlc-fast-supported;
 			lge,chargerlogo-supported;
 			lge,qni_current_offset = <60>;
@@ -297,7 +297,7 @@
 						 406	 995	150
 						 382	 998	 75
 						 393	1000	  0>;
-				lge,sdp_comp = <0>;
+				lge,sdp_comp = <4>;
 				lge,cdp_comp = <0>;
 				lge,dcp_comp = <0>;
 				lge,min_comp = <0>;
@@ -343,7 +343,7 @@
 						 406	 995	150
 						 382	 998	 75
 						 393	1000	  0>;
-				lge,sdp_comp = <0>;
+				lge,sdp_comp = <4>;
 				lge,cdp_comp = <0>;
 				lge,dcp_comp = <0>;
 				lge,min_comp = <0>;
@@ -395,11 +395,12 @@
 				"charger", "iusb_control", "NULL",
 				"charger", "thermal_mitigation", "/sys/class/power_supply/battery/system_temp_level",
 				"charger", "wlc_thermal_mitigation", "/sys/class/power_supply/dc/current_max",
-				"charger", "usb_parallel_chg_status", "/sys/class/power_supply/parallel/status_parallel",
+				"charger", "usb_parallel_chg_status", "/sys/class/power_supply/parallel/parallel_status",
 				"charger", "usb_parallel_charging_enabled", "/sys/class/power_supply/parallel/charging_enabled",
 				"charger", "quick_charging_state", "/sys/module/lge_power_class_charging_controller/parameters/quick_charging_state",
 				"charger", "ibat_max_current", "/sys/class/power_supply/battery/constant_charge_current_max",
 				"charger", "chgstep", "/sys/class/power_supply/battery/device/chgstep",
+				"charger", "connection_type", "/sys/class/power_supply/dc-wireless/connection_type",
 				/* LCD Backlight */
 				"lcd", "brightness", "/sys/class/leds/lcd-backlight/brightness",
 				"lcd", "max_brightness", "/sys/class/leds/lcd-backlight/max_brightness",
@@ -463,6 +464,8 @@
 };
 
 &pm8998_vadc {
+	lge,gpio-sbu-oe = <&tlmm 16 0>;
+	lge,gpio-edge-sel = <&tlmm 42 0>;
 	chan@85 {
 		label = "vcoin";
 		reg = <0x85>;
@@ -692,6 +695,7 @@
 	qcom,batt-life-cycle-set = <0 200 300 400>;
 	qcom,batt-life-cycle-fcc-ma = <3300000 3000000 2900000 2700000>;
 	qcom,auto-recharge-soc;
+	lge,maximum-icl-ua = <3000000>;
 	lge,smb-bat-en-gpio = <&pmi8998_gpios 1 0>;
 	lge,inov-lcd-on-temp = <1200 1300 960 970>;
 	lge,inov-lcd-off-temp = <1200 1300 960 970>;
@@ -800,6 +804,30 @@
 			regulator-max-microvolt = <2704000>;
 			qcom,init-voltage       = <2704000>;
 			qcom,vdd-voltage-level = <2704000 2704000>;
+			status = "okay";
+		};
+	};
+
+	rpm-regulator-bobb {
+		status = "okay";
+		pmi8998_bob: regulator-bob {
+			qcom,pwm-threshold-current = <2000000>;
+			qcom,init-bob-mode = <2>;
+			status = "okay";
+		};
+		pmi8998_bob_pin1: regulator-bob-pin1 {
+			qcom,pwm-threshold-current = <2000000>;
+			qcom,init-bob-mode = <2>;
+			status = "okay";
+		};
+		pmi8998_bob_pin2: regulator-bob-pin2 {
+			qcom,pwm-threshold-current = <2000000>;
+			qcom,init-bob-mode = <2>;
+			status = "okay";
+		};
+		pmi8998_bob_pin3: regulator-bob-pin3 {
+			qcom,pwm-threshold-current = <2000000>;
+			qcom,init-bob-mode = <2>;
 			status = "okay";
 		};
 	};

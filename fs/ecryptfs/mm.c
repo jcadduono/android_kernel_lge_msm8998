@@ -193,6 +193,7 @@ static void ecryptfs_mm_drop_pagecache(struct super_block *sb, void *arg)
 		if (inode->i_mapping && (inode->i_mapping->nrpages == 0)) {
 			struct ecryptfs_crypt_stat *crypt_stat;
 			spin_unlock(&inode->i_lock);
+			spin_unlock(&sb->s_inode_list_lock);
 
 			if(ecryptfs_mm_debug)
 				SDP_LOGD("%s() ecryptfs inode [ino:%lu]\n",__func__, inode->i_ino);
@@ -203,6 +204,7 @@ static void ecryptfs_mm_drop_pagecache(struct super_block *sb, void *arg)
 					&& !atomic_read(&ecryptfs_inode_to_private(inode)->lower_file_count)) {
 				ecryptfs_clean_sdp_key(crypt_stat);
             }
+			spin_lock(&sb->s_inode_list_lock);
 			continue;
 		}
 		spin_unlock(&inode->i_lock);

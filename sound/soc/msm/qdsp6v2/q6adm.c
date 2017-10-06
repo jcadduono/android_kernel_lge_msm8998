@@ -2183,6 +2183,16 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 		pr_debug("%s: Force open adm in 24-bit for DTS HPX topology 0x%x\n",
 			__func__, topology);
 	}
+
+/* For LSM FLUENCE DEVICE topology only, force fluence topology */
+#ifdef CONFIG_MACH_LGE
+      if(acdb_id==149 && topology != FLUENCE_AUDIOV5_TOPOLOGY)
+      {
+	    pr_err("%s: Fluence Invalid topology ID 0x%x Force change to fluence\n", __func__, topology);
+        topology = FLUENCE_AUDIOV5_TOPOLOGY;
+      }
+#endif
+
 	/* For AUDIO_RX_LGE topology only, force 24 bit */
 #ifdef CONFIG_MACH_LGE
 	if(topology == AUDIO_RX_LGE) {

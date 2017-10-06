@@ -47,7 +47,8 @@ static diag_lock_state_t get_diag_lock_state_from_smem(void)
 {
 	struct {
 		int hw_rev;
-		char model_name[10];
+		char model_name[16];
+		char sw_ver[64];
 		char diag_enable;
 	} *smem_id_vendor0 = NULL;
 	unsigned size;
@@ -56,7 +57,7 @@ static diag_lock_state_t get_diag_lock_state_from_smem(void)
 	if (!smem_id_vendor0)
 		return 0;
 
-	pr_debug("%s: diag_enable(%d)\n", __func__,
+	pr_info("%s: diag_enable(%d)\n", __func__,
 		smem_id_vendor0->diag_enable);
 
 	return smem_id_vendor0->diag_enable ?

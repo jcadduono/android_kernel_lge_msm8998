@@ -4806,6 +4806,11 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
 				struct ext4_group_desc *gdp =
 					ext4_get_group_desc(sb, g, NULL);
 
+				if (!gdp) {
+					ext4_msg(sb, KERN_ERR, "gdp is NULL");
+					goto restore_opts;
+				}
+
 				if (!ext4_group_desc_csum_verify(sb, g, gdp)) {
 					ext4_msg(sb, KERN_ERR,
 	       "ext4_remount: Checksum for group %u failed (%u!=%u)",

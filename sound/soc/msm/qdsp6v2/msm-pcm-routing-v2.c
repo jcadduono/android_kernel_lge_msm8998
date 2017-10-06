@@ -10426,10 +10426,13 @@ static int msm_routing_get_tx_cfg_control(struct snd_kcontrol *kcontrol,
     }
     pr_info("%s: parameters copp_idx=%d, param_length=%d \n", __func__, copp_idx, param_length);
 
+    if (param_value == NULL) {
     param_value = (struct tx_control_param_t*) kzalloc(param_length, GFP_KERNEL);
+
     if (!param_value) {
         pr_err("%s, param memory alloc failed\n", __func__);
         return -ENOMEM;
+    }
     }
 
     rc = adm_get_params(SLIMBUS_0_TX, copp_idx, AUDIO_MODULE_AC, AUDIO_PARAM_AC,

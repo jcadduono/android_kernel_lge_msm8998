@@ -4323,6 +4323,21 @@ typedef enum {
      *  units are microseconds
      */
     WMI_PDEV_PARAM_ACK_TIMEOUT,
+    /** Number of TX chains to use for a/b/g rates.
+     *  bit 0~15  : 11b mode TX chain number.
+     *  bit 16~31 : 11ag mode TX chain number.
+     */
+    WMI_PDEV_PARAM_ABG_MODE_TX_CHAIN_NUM,
+    /** Enable/Disable cck txfir override
+     *  bit 0 - enable (1) or disable (0) CCK tx FIR
+     *  bits 31:1 - unused / reserved (set to 0)
+     */
+    WMI_PDEV_PARAM_ENABLE_CCK_TXFIR_OVERRIDE,
+    /** Enable/Disable DTIM Synth
+     *   1- Enable DTIM Synth
+     *   0- Disable DTIM Synth
+     */
+    WMI_PDEV_PARAM_DTIM_SYNTH,
 } WMI_PDEV_PARAM;
 
 typedef struct {

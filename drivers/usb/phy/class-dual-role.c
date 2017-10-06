@@ -53,6 +53,9 @@ static struct device_attribute dual_role_attrs[] = {
 	DUAL_ROLE_ATTR(pdo2),
 	DUAL_ROLE_ATTR(pdo3),
 	DUAL_ROLE_ATTR(pdo4),
+	DUAL_ROLE_ATTR(pdo5),
+	DUAL_ROLE_ATTR(pdo6),
+	DUAL_ROLE_ATTR(pdo7),
 	DUAL_ROLE_ATTR(rdo),
 #endif
 #ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
@@ -380,7 +383,10 @@ static ssize_t dual_role_show_property(struct device *dev,
 	} else if (off == DUAL_ROLE_PROP_PDO1 ||
 		   off == DUAL_ROLE_PROP_PDO2 ||
 		   off == DUAL_ROLE_PROP_PDO3 ||
-		   off == DUAL_ROLE_PROP_PDO4) {
+		   off == DUAL_ROLE_PROP_PDO4 ||
+		   off == DUAL_ROLE_PROP_PDO5 ||
+		   off == DUAL_ROLE_PROP_PDO6 ||
+		   off == DUAL_ROLE_PROP_PDO7) {
 		if (value == 0) {
 			*buf = '\0';
 			return 0;

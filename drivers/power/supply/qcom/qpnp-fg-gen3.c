@@ -75,6 +75,10 @@
 #define ESR_TIMER_CHG_MAX_OFFSET	0
 #define ESR_TIMER_CHG_INIT_WORD		18
 #define ESR_TIMER_CHG_INIT_OFFSET	2
+#ifdef CONFIG_LGE_PM
+#define ESR_EXTRACTION_ENABLE_WORD	19
+#define ESR_EXTRACTION_ENABLE_OFFSET	0
+#endif
 #define PROFILE_LOAD_WORD		24
 #define PROFILE_LOAD_OFFSET		0
 #define ESR_RSLOW_DISCHG_WORD		34
@@ -2388,6 +2392,10 @@ static int fg_adjust_recharge_soc(struct fg_chip *chip)
 				new_recharge_soc = msoc - (FULL_CAPACITY -
 								recharge_soc);
 				chip->recharge_soc_adjusted = true;
+#ifdef CONFIG_LGE_PM
+				if(msoc >= recharge_soc)
+					new_recharge_soc = recharge_soc;
+#endif
 			} else {
 				/* adjusted already, do nothing */
 				return 0;
@@ -4053,7 +4061,92 @@ static int fg_esr_validate(struct fg_chip *chip)
 	fg_dbg(chip, FG_STATUS, "ESR clamped to %duOhms\n", esr_uohms);
 	return 0;
 }
+#ifdef CONFIG_LGE_PM
+static int fg_force_esr_meas(struct fg_chip *chip)
+{
+	int rc;
+	int esr_uohms;
 
+	fg_dbg(chip, FG_LGE, "qni  >>> enter\n");
+
+	/* force esr extraction enable */
+	rc = fg_sram_masked_write(chip, ESR_EXTRACTION_ENABLE_WORD,
+			ESR_EXTRACTION_ENABLE_OFFSET, BIT(0), BIT(0),
+			FG_IMA_DEFAULT);
+	if (rc < 0) {
+		pr_err("failed to enable esr extn rc=%d\n", rc);
+		return rc;
+	}
+
+	rc = fg_masked_write(chip, BATT_INFO_QNOVO_CFG(chip),
+			LD_REG_CTRL_BIT, 0);
+	if (rc < 0) {
+		pr_err("Error in configuring qnovo_cfg rc=%d\n", rc);
+		return rc;
+	}
+
+	rc = fg_masked_write(chip, BATT_INFO_TM_MISC1(chip),
+			ESR_REQ_CTL_BIT | ESR_REQ_CTL_EN_BIT,
+			ESR_REQ_CTL_BIT | ESR_REQ_CTL_EN_BIT);
+	if (rc < 0) {
+		pr_err("Error in configuring force ESR rc=%d\n", rc);
+		return rc;
+	}
+	/* wait 1.5 seconds for hw to measure ESR */
+	msleep(1500);
+	rc = fg_masked_write(chip, BATT_INFO_TM_MISC1(chip),
+			ESR_REQ_CTL_BIT | ESR_REQ_CTL_EN_BIT,
+			0);
+	if (rc < 0) {
+		pr_err("Error in restoring force ESR rc=%d\n", rc);
+		return rc;
+	}
+
+	rc = fg_masked_write(chip, BATT_INFO_QNOVO_CFG(chip),
+			LD_REG_CTRL_BIT, LD_REG_CTRL_BIT);
+	if (rc < 0) {
+		pr_err("Error in restoring qnovo_cfg rc=%d\n", rc);
+		return rc;
+	}
+
+	/* force esr extraction disable */
+	rc = fg_sram_masked_write(chip, ESR_EXTRACTION_ENABLE_WORD,
+			ESR_EXTRACTION_ENABLE_OFFSET, BIT(0), 0,
+			FG_IMA_DEFAULT);
+	if (rc < 0) {
+		pr_err("failed to disable esr extn rc=%d\n", rc);
+		return rc;
+	}
+
+	fg_get_battery_resistance(chip, &esr_uohms);
+	fg_dbg(chip, FG_STATUS, "qni  <<< exit, ESR uohms = %d\n", esr_uohms);
+	return rc;
+}
+
+static int fg_prepare_for_qnovo(struct fg_chip *chip, int qnovo_enable)
+{
+	int rc;
+
+	fg_dbg(chip, FG_LGE, "qni  >>> enter, enable=%d\n", qnovo_enable);
+	/* force esr extraction disable when qnovo enables */
+	rc = fg_sram_masked_write(chip, ESR_EXTRACTION_ENABLE_WORD,
+			ESR_EXTRACTION_ENABLE_OFFSET,
+			BIT(0), qnovo_enable ? 0 : BIT(0),
+			FG_IMA_DEFAULT);
+	if (rc < 0)
+		pr_err("Error in configuring esr extraction rc=%d\n", rc);
+
+	rc = fg_masked_write(chip, BATT_INFO_QNOVO_CFG(chip),
+			LD_REG_CTRL_BIT,
+			qnovo_enable ? LD_REG_CTRL_BIT : 0);
+	if (rc < 0) {
+		pr_err("Error in configuring qnovo_cfg rc=%d\n", rc);
+		return rc;
+	}
+	fg_dbg(chip, FG_LGE, "qni  <<< exit\n");
+	return 0;
+}
+#endif
 /* PSY CALLBACKS STAY HERE */
 
 static int fg_psy_get_property(struct power_supply *psy,
@@ -4210,6 +4303,14 @@ static int fg_psy_set_property(struct power_supply *psy,
 		rc = fg_set_prop_scale_threshold(chip, psp, pval->intval);
 		break;
 #endif
+#ifdef CONFIG_LGE_PM
+	case POWER_SUPPLY_PROP_RESISTANCE:
+		rc = fg_force_esr_meas(chip);
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_QNOVO_ENABLE:
+		rc = fg_prepare_for_qnovo(chip, pval->intval);
+		break;
+#endif
 	default:
 		break;
 	}
@@ -4226,6 +4327,9 @@ static int fg_property_is_writeable(struct power_supply *psy,
 #ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
 	case POWER_SUPPLY_PROP_LGE_CYCLE_ENABLE:
 	case POWER_SUPPLY_PROP_BATTERY_CYCLE:
+#endif
+#ifdef CONFIG_LGE_PM
+	case POWER_SUPPLY_PROP_RESISTANCE:
 #endif
 		return 1;
 	default:
@@ -5977,6 +6081,9 @@ static int fg_gen3_suspend(struct device *dev)
 	cancel_delayed_work_sync(&chip->batt_avg_work);
 	if (fg_sram_dump)
 		cancel_delayed_work_sync(&chip->sram_dump_work);
+#ifdef CONFIG_LGE_PM_DEBUG
+	cancel_delayed_work_sync(&chip->fg_inform_work);
+#endif
 	return 0;
 }
 
@@ -6000,8 +6107,31 @@ static int fg_gen3_resume(struct device *dev)
 	if (fg_sram_dump)
 		schedule_delayed_work(&chip->sram_dump_work,
 				msecs_to_jiffies(fg_sram_dump_period_ms));
+#ifdef CONFIG_LGE_PM_DEBUG
+	schedule_delayed_work(&chip->fg_inform_work,
+			round_jiffies_relative(msecs_to_jiffies(FG_INFORM_NORMAL_TIME)));
+#endif
 	return 0;
 }
+
+#ifdef CONFIG_LGE_PM
+static void fg_gen3_shutdown(struct platform_device *pdev)
+{
+	struct fg_chip *chip = platform_get_drvdata(pdev);
+
+	fg_masked_write(chip, BATT_INFO_TM_MISC1(chip),
+			ESR_REQ_CTL_BIT | ESR_REQ_CTL_EN_BIT,
+			0);
+
+	fg_masked_write(chip, BATT_INFO_QNOVO_CFG(chip),
+			LD_REG_CTRL_BIT, LD_REG_CTRL_BIT);
+
+	/* force esr extraction disable */
+	fg_sram_masked_write(chip, ESR_EXTRACTION_ENABLE_WORD,
+			ESR_EXTRACTION_ENABLE_OFFSET, BIT(0), 0,
+			FG_IMA_DEFAULT);
+}
+#endif
 
 static const struct dev_pm_ops fg_gen3_pm_ops = {
 	.suspend	= fg_gen3_suspend,
@@ -6030,6 +6160,9 @@ static struct platform_driver fg_gen3_driver = {
 	},
 	.probe		= fg_gen3_probe,
 	.remove		= fg_gen3_remove,
+#ifdef CONFIG_LGE_PM
+	.shutdown 	= fg_gen3_shutdown,
+#endif
 };
 
 static int __init fg_gen3_init(void)

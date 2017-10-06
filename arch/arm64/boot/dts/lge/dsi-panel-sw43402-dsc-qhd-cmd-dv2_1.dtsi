@@ -15,7 +15,7 @@
 
 &mdss_mdp {
     dsi_sw43402_dsc_qhd_cmd_dv2_1: qcom,mdss_dsi_sw43402_dsc_qhd_cmd_dv2_1 {
-        qcom,mdss-dsi-panel-name = "SW43402 DV2.x cmd mode dsc dsi panel - dv2_1";
+        qcom,mdss-dsi-panel-name = "SW43402 cmd mode dsc dsi panel";
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
 		qcom,mdss-dsi-panel-framerate = <60>;
 		qcom,mdss-dsi-virtual-channel-id = <0>;
@@ -67,12 +67,13 @@
 		qcom,mdss-dsi-tx-eot-append;
 		qcom,mdss-mdp-transfer-time-us = <15000>;
 		qcom,ulps-enabled;
-		qcom,mdss-dsi-force-clock-lane-hs = <1>;
+		qcom,mdss-dsi-force-clock-lane-hs;
 
 		qcom,mdss-dsi-panel-hdr-enabled;
 		qcom,mdss-dsi-panel-hdr-color-primaries = <14880 15935 32435 16555 14945 30910 7790 3415>;
 		qcom,mdss-dsi-panel-peak-brightness = <5643000>;		/* max. 500nits */
 		qcom,mdss-dsi-panel-blackness-level = <6134>;
+		lge,color-manager-default-status = <1>;
 
 		qcom,mdss-dsi-on-command = [
 			39 01 00 00 00 00 03 B0 20 43
@@ -80,16 +81,16 @@
 			39 01 00 00 00 00 03 DF 4B 70
 			15 01 00 00 00 00 02 F2 00
 			39 01 00 00 01 00 03 FF 03 00
-			05 01 00 00 14 00 01 35
-			05 01 00 00 14 00 01 11
+			05 01 00 00 00 00 01 35
+			05 01 00 00 3C 00 01 11
 			15 01 00 00 00 00 02 51 03
 			15 01 00 00 00 00 02 53 07
 			15 01 00 00 00 00 02 55 0C
 			39 01 00 00 00 00 03 B0 A5 00
-			39 01 00 00 00 00 16 D4 10 00 FF 60 30 40 50 20 20 20 20 A0 00 20 00 34 a0 08 DA DA 4A
 			39 01 00 00 00 00 05 E8 08 90 10 25
+			39 01 00 00 00 00 16 D4 10 00 FF 60 30 40 50 20 20 20 20 A0 00 20 00 34 a0 08 DA DA 4A
 			39 01 00 00 00 00 03 FB 03 77
-			39 01 00 00 14 00 06 ED 13 00 07 00 13
+			39 01 00 00 00 00 06 ED 13 00 07 00 13
 			39 01 00 00 46 00 0F E2 20 0D 08 A8 0A AA 04 A4 80 80 80 5C 5C 5C
 			];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
@@ -150,7 +151,7 @@
 			];
 
 		lge,mdss-dsi-cm-native-command = [
-			39 01 00 00 00 00 1D D9 70 55 70 70 08 0F F0 F5 00 00 0A 00 00 00 00 0A 78 7C 80 76 6E 71 71 76 71 71 78 68
+			39 01 00 00 00 00 1D D9 70 55 78 70 08 07 F0 FA 00 FA 0A 00 00 00 00 0A 80 7C 80 78 78 7C 71 80 80 80 78 78
 			];
 
 		lge,mdss-dsi-hs-command-state = "dsi_hs_mode";
@@ -451,8 +452,8 @@
 			>;
 		lge,blmap-ex_v1 = <
 			3
-			26 26 26 26 26 26 26 26 27 28 29 31 32 33 34 36 37 38 39 40
-			42 43 44 45 47 48 49 50 51 53 54 55 56 58 59 60 62 63 65 67
+			36 36 36 36 36 36 36 36 36 37 38 39 40 40 41 42 43 44 45 46
+			47 48 48 49 50 51 52 53 54 55 56 56 57 58 59 60 62 63 65 67
 			68 70 72 73 75 77 78 80 82 83 85 87 88 90 92 93 95 97 98 100
 			102 103 105 107 108 110 112 113 115 117 118 120 122 123 125 127 129 131 132 134
 			136 138 140 142 144 146 147 149 151 153 155 157 159 160 162 164 166 168 170 172

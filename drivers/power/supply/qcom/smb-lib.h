@@ -63,6 +63,8 @@ enum print_reason {
 #define RETRY_LEGACY_VOTER			"RETRY_LEGACY_VOTER"
 #define APSD_RERUN_VOTER			"APSD_RERUN_VOTER"
 #define FAST_HVDCP_DETECTION_VOTER	"FAST_HVDCP_DETECTION_VOTER"
+#define NO_BATTERY_VOTER	"NO_BATTERY_VOTER"
+#define HW_ICL_VOTER		"HW_ICL_VOTER"
 #endif
 #define PD_INACTIVE_VOTER		"PD_INACTIVE_VOTER"
 #define BOOST_BACK_VOTER		"BOOST_BACK_VOTER"
@@ -70,7 +72,7 @@ enum print_reason {
 #define WEAK_BATT_VOTER		"WEAK_BATT_VOTER"
 #endif
 #ifdef CONFIG_LGE_PM_DEBUG
-#define CHARGING_INFORM_NORMAL_TIME     15000
+#define CHARGING_INFORM_NORMAL_TIME     60000
 #endif
 #ifdef CONFIG_LGE_PM_SUPPORT_LG_POWER_CLASS
 #define LGE_POWER_CLASS_FCC_VOTER "LGE_POWER_CLASS_FCC_VOTER"
@@ -111,6 +113,9 @@ enum print_reason {
 #ifdef CONFIG_LGE_PM
 #define PSEUDO_USB_TYPE	1
 #define PSEUDO_HVDCP	2
+
+#define SLOW_CHARGING_THRESHOLD   100000
+#define SLOW_CHARGING_DETECT_MS   15000
 #endif
 
 #define VCONN_MAX_ATTEMPTS	3
@@ -434,7 +439,9 @@ struct smb_charger {
 #endif
 #ifdef CONFIG_LGE_PM
 	int			safety_timer_en;
+	int			maximum_icl_ua;
 	uint32_t		smb_bat_en;
+	bool			usbin_ov_sts;
 	bool			no_batt_boot;
 	bool			fake_hvdcp_mode;
 	bool			lcd_status;
@@ -442,10 +449,12 @@ struct smb_charger {
 	bool			checking_pd_active;
 	bool			is_abnormal_gendor;
 	bool			is_hvdcp_timeout;
+	bool			disable_inov_for_hvdcp;
 	enum retry_legacy_index		retry_legacy_detection;
 	enum power_supply_type		pseudo_usb_type;
 	struct delayed_work 	recovery_boost_back_work;
 	struct delayed_work 	abnormal_gender_detect_work;
+	struct delayed_work 	slow_charging_detect_work;
 #endif
 #ifdef CONFIG_LGE_PM_USE_FAKE_BATT_TEMP_CTRL
 	int			fake_batt_temp_ctrl;
@@ -547,7 +556,7 @@ int smblib_mapping_cc_delta_from_field_value(struct smb_chg_param *param,
 int smblib_set_chg_freq(struct smb_chg_param *param,
 				int val_u, u8 *val_raw);
 #ifdef CONFIG_LGE_PM
-int smblib_update_icl_override(struct smb_charger *chg);
+int smblib_update_icl_override(struct smb_charger *chg, bool enable);
 #endif
 
 int smblib_vbus_regulator_enable(struct regulator_dev *rdev);
@@ -566,6 +575,7 @@ irqreturn_t smblib_handle_lge_debug(int irq, void *data);
 irqreturn_t smblib_handle_vzw_debug(int irq, void *data);
 #endif
 #ifdef CONFIG_LGE_PM
+irqreturn_t smblib_handle_usbin_ov(int irq, void *data);
 irqreturn_t smblib_handle_aicl_fail(int irq, void *data);
 #endif
 irqreturn_t smblib_handle_otg_overcurrent(int irq, void *data);
@@ -606,6 +616,8 @@ int smblib_get_prop_batt_status_for_ui(struct smb_charger *chg,
 int smblib_get_prop_fcc_max(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_get_prop_batt_voltage_max(struct smb_charger *chg,
+				union power_supply_propval *val);
+int smblib_get_prop_batt_present_smem(struct smb_charger *chg,
 				union power_supply_propval *val);
 #endif
 #ifdef CONFIG_LGE_PM_TIME_TO_FULL
