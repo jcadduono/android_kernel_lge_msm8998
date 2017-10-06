@@ -904,8 +904,20 @@ int mdss_panel_dsc_prepare_pps_buf(struct dsc_desc *dsc, char *buf,
 	*bp++ = data;				/* pps4 */
 	*bp++ = (bpp & 0xff);			/* pps5 */
 
+#if defined(CONFIG_LGE_DISPLAY_AMBIENT_SUPPORTED)
+	pr_info("[Display] pic_height : %d, partial_height : %d\n",
+					dsc->pic_height, dsc->partial_height);
+	if (dsc->partial_height > 0) {
+		*bp++ = ((dsc->partial_height >> 8) & 0xff); /* pps6 */
+		*bp++ = (dsc->partial_height & 0x0ff);	/* pps7 */
+	} else {
+		*bp++ = ((dsc->pic_height >> 8) & 0xff); /* pps6 */
+		*bp++ = (dsc->pic_height & 0x0ff);	/* pps7 */
+	}
+#else
 	*bp++ = ((dsc->pic_height >> 8) & 0xff); /* pps6 */
 	*bp++ = (dsc->pic_height & 0x0ff);	/* pps7 */
+#endif
 	*bp++ = ((dsc->pic_width >> 8) & 0xff);	/* pps8 */
 	*bp++ = (dsc->pic_width & 0x0ff);	/* pps9 */
 

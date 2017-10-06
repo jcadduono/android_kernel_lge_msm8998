@@ -1,0 +1,274 @@
+config MACH_LGE
+	bool "Machine LGE"
+	help
+	  Support for machine LGE.
+
+menu "LGE Board Selection"
+
+config MACH_MSM8998_TAIMEN
+	bool "MSM8998 TAIMEN"
+	depends on ARCH_MSM8998
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8998 TAIMEN device.
+
+config MACH_MSM8998_LUCY
+	bool "MSM8998 LUCY"
+	depends on ARCH_MSM8998
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8998 LUCY device.
+
+config MACH_MSM8998_LUCY_KR
+	bool "MSM8998 LUCY_KR"
+	depends on ARCH_MSM8998
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8998 LUCY_KR device.
+
+config MACH_MSM8998_LUCY_LGU_KR
+	bool "MSM8998 LUCY_LGU_KR"
+	depends on ARCH_MSM8998
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8998 LUCY_LGU_KR device.
+
+config MACH_MSM8998_LUCY_DCM_JP
+	bool "MSM8998 LUCY_DCM_JP"
+	depends on ARCH_MSM8998
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8998 LUCY_DCM_JP device.
+
+config MACH_MSM8998_JOAN
+	bool "MSM8998 JOAN"
+	depends on ARCH_MSM8998
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8998 JOAN device.
+
+config MACH_MSM8998_JOAN_KR
+	bool "MSM8998 JOAN_KR"
+	depends on ARCH_MSM8998
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8998 JOAN_KR device.
+
+config MACH_MSM8998_JOAN_LGU_KR
+	bool "MSM8998 JOAN_LGU_KR"
+	depends on ARCH_MSM8998
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8998 JOAN_LGU_KR device.
+
+config MACH_MSM8998_JOAN_SKT_KR
+	bool "MSM8998 JOAN_SKT_KR"
+	depends on ARCH_MSM8998
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8998 JOAN_SKT_KR device.
+
+config MACH_MSM8998_JOAN_KT_KR
+	bool "MSM8998 JOAN_KT_KR"
+	depends on ARCH_MSM8998
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8998 JOAN_SKT_KR device.
+
+config MACH_MSM8998_JOAN_VZW
+	bool "MSM8998 JOAN_VZW"
+	depends on ARCH_MSM8998
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8998 JOAN_VZW device.
+
+config MACH_MSM8998_JOAN_ATT_US
+	bool "MSM8998 JOAN_ATT_US"
+	depends on ARCH_MSM8998
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8998 JOAN_ATT_US device.
+
+config MACH_MSM8998_JOAN_SPR_US
+	bool "MSM8998 JOAN_SPR_US"
+	depends on ARCH_MSM8998
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8998 JOAN_SPR_US device.
+
+
+config MACH_MSM8998_JOAN_NAO_US
+	bool "MSM8998 JOAN_NAO_US"
+	depends on ARCH_MSM8998
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8998 JOAN_NAO_US device.
+
+config MACH_MSM8998_JOAN_TMO_US
+	bool "MSM8998 JOAN_TMO_US"
+	depends on ARCH_MSM8998
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8998 JOAN_TMO_US device.
+
+config MACH_MSM8998_JOAN_CLR_PR
+	bool "MSM8998 JOAN_CLR_PR"
+	depends on ARCH_MSM8998
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8998 JOAN_CLR_PR device.
+
+
+config MACH_MSM8998_JOAN_GLOBAL_COM
+	bool "MSM8998 JOAN_GLOBAL_COM"
+	depends on ARCH_MSM8998
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8998 JOAN_GLOBAL_COM device.
+
+config MACH_MSM8998_JOAN_GLOBAL_CA
+	bool "MSM8998 JOAN_GLOBAL_CA"
+	depends on ARCH_MSM8998
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8998 JOAN_GLOBAL_CA device.
+
+config MACH_MSM8998_JOAN_ACG_US
+	bool "MSM8998 JOAN_ACG_US"
+	depends on ARCH_MSM8998
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8998 JOAN_ACG_US device.
+
+config MACH_MSM8998_JOAN_DCM_JP
+	bool "MSM8998 JOAN_DCM_JP"
+	depends on ARCH_MSM8998
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8998 JOAN_DCM_JP device.
+
+config MACH_MSM8998_JOAN_GLOBAL_LDU
+	bool "MSM8998 JOAN_GLOBAL_LDU"
+	depends on ARCH_MSM8998
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8998 JOAN_GLOBAL_LDU device.
+
+config LGE_BOOTLOADER_LOG
+	tristate "Support LGE bootloader log"
+	default n
+	depends on MACH_LGE
+	help
+	  LGE bootloader log
+
+config LGE_BOOTLOADER_TIME_CHECKER
+	tristate "Supprt bootloader(LK, SBL) time"
+	default n
+	depends on MACH_LGE
+	help
+	  Check LK, SBL booting time at
+	  sys/module/lge_bootloader_time_checker/parameters/lk_time
+	  sys/module/lge_bootloader_time_checker/parameters/sbl_time
+endmenu
+
+menu "LGE Specific Patches"
+
+config LGE_HANDLE_PANIC
+	tristate "Support LGE Crash Handler"
+	default n
+	depends on MACH_LGE
+	help
+	  LGE Crash Handler
+
+config PRE_SELF_DIAGNOSIS
+	tristate "Support LGE self diagnosis for factory"
+	default n
+	depends on MACH_LGE
+	help
+	  LGE self diagnosis
+
+config LGE_PM_CHARGING_SCENARIO
+	tristate "Support LGE PM Charging Scenario"
+	default n
+	depends on MACH_LGE
+	help
+	  LGE PM Charging Scenario
+
+config LGE_PM_UNIFIED_NODE
+	bool "enable LGE PM Unified sysfs node"
+	default n
+	depends on MACH_LGE
+	help
+	  Support LGE PM Unified sysfs node
+
+config LGE_PM_SMPL_COUNTER
+	tristate "Support LGE SMPL COUNTER feature"
+	default n
+	depends on MACH_LGE
+	help
+	  Say y to enable smpl_cnt module, that count when
+	  booted by SMPL
+
+config LGE_PM_TIME_TO_FULL
+	tristate "Support LGE PM Time To Full"
+	default n
+	depends on LGE_PM
+	help
+	  LGE PM Time To Full
+
+config LGE_QSDL_SUPPORT
+	tristate "Support for Quality Statistics Data Logging"
+	default n
+	depends on MACH_LGE
+	help
+	  QSDL is a feature which notify infomation for quality statistics
+	  data logging of device.
+
+config LGE_MISC_PWR_CONTROLLER
+       tristate "Support for controlling rails data for HW Team"
+       default n
+       depends on SPMI
+       depends on MACH_LGE
+       help
+         MISC PWR controller is to modify some of the PMIC related registers.
+
+config LGE_PKM
+    tristate "Support PKM driver with QSEE"
+    depends on MACH_LGE
+    default n
+    help
+      Say Y here to enable Mobile Kernel Integrity driver for LG PKM
+
+config LGE_PSTORE_BACKUP
+	tristate "Support pstore backup"
+	default n
+	depends on MACH_LGE
+	help
+	  Ramoops region is backed up to pstore partition
+
+endmenu
+
+menu "LGE QFPROM Values"
+
+config LGE_QFPROM_INTERFACE
+	bool "Support qfprom interface"
+	default n
+	depends on MACH_LGE
+	help
+	  LGE QFPROM DRIVER.
+
+config LGE_QFPROM_SECHASH
+	string "Support qfprom sec hash"
+	default 0x0
+	depends on LGE_QFPROM_INTERFACE
+	help
+	  LGE QFPROM DRIVER-SEC partition's hash value.
+
+config LGE_PM_UNIFIED_NODE
+	bool "enable LGE PM Unified sysfs node"
+	help
+	  Support LGE PM Unified sysfs node
+
+endmenu
+
+source "drivers/soc/qcom/lge/power/Kconfig"

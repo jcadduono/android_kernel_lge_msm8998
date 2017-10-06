@@ -1720,6 +1720,12 @@ static int msm_spi_prepare_transfer_hardware(struct spi_master *master)
 	struct msm_spi	*dd = spi_master_get_devdata(master);
 	int resume_state = 0;
 
+	if (!pm_runtime_enabled(dd->dev)) {
+		dev_err(dd->dev, "Runtime PM not available\n");
+		resume_state = -EBUSY;
+		goto spi_finalize;
+	}
+
 	resume_state = pm_runtime_get_sync(dd->dev);
 	if (resume_state < 0)
 		goto spi_finalize;
@@ -1747,6 +1753,11 @@ spi_finalize:
 static int msm_spi_unprepare_transfer_hardware(struct spi_master *master)
 {
 	struct msm_spi	*dd = spi_master_get_devdata(master);
+
+	if (!pm_runtime_enabled(dd->dev)) {
+		dev_err(dd->dev, "Runtime PM not available\n");
+		return -EBUSY;
+	}
 
 	pm_runtime_mark_last_busy(dd->dev);
 	pm_runtime_put_autosuspend(dd->dev);

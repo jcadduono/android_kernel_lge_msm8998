@@ -63,6 +63,7 @@
 #define SERVER_TIMEOUT				500
 #define MAX_STRING_LEN				100
 
+int enable_log = 0;
 /*
  * Per user service data structure
  * struct service_notif_info - notifier struct for each unique service path
@@ -171,12 +172,16 @@ static void root_service_clnt_recv_msg(struct work_struct *work)
 	struct qmi_client_info *data = container_of(work,
 					struct qmi_client_info, svc_rcv_msg);
 
+	pr_info("<Debug> schedule for instance = %d\n",data->instance_id);
+	enable_log = 1;
+
 	do {
 		pr_debug("Polling for QMI recv msg(instance-id: %d)\n",
 							data->instance_id);
 	} while ((ret = qmi_recv_msg(data->clnt_handle)) == 0);
 
-	pr_debug("Notified about a Receive event (instance-id: %d)\n",
+	enable_log = 0;
+	pr_info("Notified about a Receive event (instance-id: %d)\n",
 							data->instance_id);
 }
 
@@ -188,6 +193,7 @@ static void root_service_clnt_notify(struct qmi_handle *handle,
 
 	switch (event) {
 	case QMI_RECV_MSG:
+		pr_info("<Debug> schedule for instance = %d\n",data->instance_id);
 		schedule_work(&data->svc_rcv_msg);
 		break;
 	default:
@@ -374,6 +380,7 @@ static void root_service_service_arrive(struct work_struct *work)
 		mutex_unlock(&qmi_client_release_lock);
 		return;
 	}
+	pr_info("<Debug> after qmi connect to service\n");
 	data->service_connected = true;
 	mutex_unlock(&qmi_client_release_lock);
 	pr_info("Connection established between QMI handle and %d service\n",
@@ -391,6 +398,7 @@ static void root_service_service_arrive(struct work_struct *work)
 			enum pd_subsys_state state = ROOT_PD_UP;
 			rc = register_notif_listener(service_notif, data,
 								&curr_state);
+			pr_info("<Debug> curr_state=%x\n",curr_state);
 			if (rc) {
 				pr_err("Notifier registration failed for %s rc:%d\n",
 					service_notif->service_path, rc);
@@ -406,6 +414,7 @@ static void root_service_service_arrive(struct work_struct *work)
 	}
 	mutex_unlock(&service_list_lock);
 	mutex_unlock(&notif_add_lock);
+	pr_info("<Debug> before registering cb\n");
 }
 
 static void root_service_service_exit(struct qmi_client_info *data,

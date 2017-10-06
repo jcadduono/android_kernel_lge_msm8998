@@ -209,13 +209,11 @@ config SND_SOC_MSM8998
 	select SND_SOC_WCD934X
 	select SND_SOC_WSA881X
 	select SND_SOC_MSM_HDMI_CODEC_RX
-	select DTS_SRS_TM
 	select QTI_PP
 	select SND_SOC_CPE
 	select MSM_ULTRASOUND
 	select DOLBY_LICENSE
 	select SND_HWDEP
-        select DTS_EAGLE
 	help
 	 To add support for SoC audio on MSM8998.
 	 This will enable sound soc drivers which
@@ -234,5 +232,54 @@ config SND_SOC_660
 	 interfaces with DSP, also it will enable
 	 the machine driver and the corresponding
 	 DAI-links
+
+config SND_LGE_EFFECT
+	bool "LGE DSP EFFECT"
+	default y
+	help
+	 To support LGE DSP EFFECT
+
+config SND_LGE_NORMALIZER
+	bool "LGE DSP NORMALIZER"
+	default y
+	help
+	 To support LGE DSP NORMALIZER
+
+config SND_LGE_MABL
+	bool "LGE DSP MABL"
+	default y
+	help
+	 To support LGE DSP MABL
+
+config SND_LGE_DSDP_DUAL_AUDIO
+	bool "LGE DSDP DUAL AUDIO"
+	default n
+	help
+	 To support LGE Sound DSDP Dual Audio
+
+config SND_USE_QUAT_MI2S
+	bool "USE QUAT MI2S PORT"
+	default n
+	help
+	 To support MSM QUAT MI2S PORT for HiFi DAC
+
+
+config SND_SABRE_EAR_AMP
+	bool "USE SABRE9018C EAR AMP"
+	default n
+	help
+	 To support Sabre EAR AMP support.
+
+config SND_LGE_TX_NXP_LIB
+	bool "USE TX NXP LIB"
+	default n
+	help
+	 To support TX NXP LIB.
+
+config SND_FM_RX_MI2S
+	bool "USE FM Radio Rx MI2S"
+	default n
+	help
+	 To support FM Radio Speaker(MI2S) path.
 
 endmenu

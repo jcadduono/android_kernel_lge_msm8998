@@ -224,11 +224,11 @@ struct tadc_chip {
 	struct completion	eoc_complete;
 	struct mutex		write_lock;
 	struct mutex		conv_lock;
+	u8          hwtrig_conv;
 	struct power_supply	*usb_psy;
 	struct votable		*tadc_disable_votable;
 	struct work_struct	status_change_work;
 	struct notifier_block	nb;
-	u8			hwtrig_conv;
 };
 
 struct tadc_pt {
@@ -279,6 +279,42 @@ static const struct tadc_pt tadc_therm_3450b_68k[] = {
 	{ 931618,	-30000 },
 	{ 1254910,	-35000 },
 	{ 1712127,	-40000 },
+};
+
+static const struct tadc_pt tadc_therm_4150b_68k[] = {
+	{ 2154,     120000 },
+	{ 2490,     115000 },
+	{ 2887,     110000 },
+	{ 3359,     105000 },
+	{ 3922,     100000 },
+	{ 4597,     95000 },
+	{ 5408,     90000 },
+	{ 6387,     85000 },
+	{ 7574,     80000 },
+	{ 9021,     75000 },
+	{ 10791,    70000 },
+	{ 12967,    65000 },
+	{ 15655,    60000 },
+	{ 18994,    55000 },
+	{ 23164,    50000 },
+	{ 28400,    45000 },
+	{ 35014,    40000 },
+	{ 43418,    35000 },
+	{ 54165,    30000 },
+	{ 68000,    25000 },
+	{ 85934,    20000 },
+	{ 109349,   15000 },
+	{ 140153,   10000 },
+	{ 181001,   5000 },
+	{ 235622,   0 },
+	{ 309299,   -5000 },
+	{ 409600,   -10000 },
+	{ 547472,   -15000 },
+	{ 738931,   -20000 },
+	{ 1007681,  -25000 },
+	{ 1389232,  -30000 },
+	{ 1937483,  -35000 },
+	{ 2735359,  -40000 },
 };
 
 static bool tadc_is_reg_locked(struct tadc_chip *chip, u16 reg)
@@ -1015,6 +1051,12 @@ static int tadc_set_therm_table(struct tadc_chan_data *chan_data, u32 beta,
 	if (beta == 3450 && rtherm == 68000) {
 		chan_data->table = tadc_therm_3450b_68k;
 		chan_data->tablesize = ARRAY_SIZE(tadc_therm_3450b_68k);
+		return 0;
+	}
+
+	else if (beta == 4150 && rtherm == 68000) {
+		chan_data->table = tadc_therm_4150b_68k;
+		chan_data->tablesize = ARRAY_SIZE(tadc_therm_4150b_68k);
 		return 0;
 	}
 

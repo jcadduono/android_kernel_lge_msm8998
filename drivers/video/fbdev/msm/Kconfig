@@ -122,4 +122,238 @@ config FB_MSM_MDSS_XLOG_DEBUG
 	driver during fatal errors and enable some display-driver logging
 	into an internal buffer (this avoids logging overhead).
 
+config LGE_MIPI_LUCY_INCELL_QHD_CMD_PANEL
+	bool "LGE_MIPI_LUCY_INCELL_QHD_CMD_PANEL"
+	default n
+	help
+	  if you say yes here you get support for the Incell Panel.
+
+config LGE_MIPI_JOAN_ONCELL_QHD_CMD_PANEL
+	bool "LGE_MIPI_JOAN_ONCELL_QHD_CMD_PANEL"
+	default n
+	help
+	  if you say yes here you get support for the Oncell Panel.
 endif
+
+config LGE_DISPLAY_DYNAMIC_RESOLUTION_SWITCH
+	depends on LGE_MIPI_JOAN_ONCELL_QHD_CMD_PANEL
+	bool "Use LGE_DISPLAY_DYNAMIC_RESOLUTION_SWITCH"
+	default n
+	---help---
+	Say Y, if you want to show black screen during dynamic resolution switch
+
+config LGE_SP_MIRRORING_CTRL_BL
+	bool "SP_MIRRORING_CTRL_BL"
+	default n
+	help
+	  if you say yes here you get support for sp mirroring backlight control
+
+config LGE_DISPLAY_CONTROL
+	bool "Enable DISPLAY_CONTROL"
+	default n
+	---help---
+	Support for HIGH DISPLAY_CONTROL MODE
+
+config LGE_DISPLAY_INTERNAL_TEST
+	bool "Enable INTERNAL_TEST"
+	default n
+	---help---
+	Support for INTERNAL_TEST
+
+config LGE_HIGH_LUMINANCE_MODE
+	bool "Enable HIGH_LUMINANCE_MODE"
+	default n
+	---help---
+	Support for HIGH_LUMINANCE_MODE
+
+config LGE_ENHANCE_GALLERY_SHARPNESS
+	bool "CONFIG_LGE_ENHANCE_GALLERY_SHARPNESS"
+	default n
+	help
+	if you say yes here you get support for enhance sharpness at gallery app
+
+config LGE_VSYNC_SKIP
+	bool "MDSS VSYNC Skip scheme"
+	default n
+	---help---
+	This feature provides VSYNC skip scheme.
+
+config LGE_LCD_POWER_CTRL
+	bool "LCD power control mode"
+	default n
+	---help---
+	if you say yes here you get support for lcd power on/off control.
+
+config LGE_LCD_MFTS_MODE
+	depends on LGE_LCD_POWER_CTRL
+	bool "LCD MFTS mode"
+	default n
+	---help---
+	if you say yes here you get support for lcd mfts control.
+
+config LGE_DISPLAY_COMFORT_MODE
+	depends on FB_MSM_MDSS
+	bool "LGE comfort view"
+	---help---
+	The comfort mode provides support to change color temperature
+	by sending proper cmds to panel.
+
+config LGE_DISPLAY_VIDEO_ENHANCEMENT
+	depends on FB_MSM_MDSS
+	bool "LGE video enhancement"
+	---help---
+	if you say yes here you get support for video enhancement function.
+
+config LGE_DISPLAY_COLOR_MANAGER
+	depends on FB_MSM_MDSS
+	bool "LGE color manager"
+	---help---
+	The color manager provides support to change color space
+	by sending proper cmds to panel.
+
+config LGE_DISPLAY_AMBIENT_SUPPORTED
+	depends on FB_MSM_MDSS
+	bool "Enable AMBIENT function"
+	---help---
+	Feature for Ambient Display scenario.
+
+config LGE_DISPLAY_AMBIENT_BRIGHTNESS_EX_SUPPORTED
+	bool "Enable AMBIENT EX-BRIGHTNESS function"
+	default n
+	---help---
+	Feature for Ambient Ex Brightness scenario.
+
+config LGE_DISPLAY_CHANGE_PARTIAL_AREA_IN_KICKOFF
+	depends on LGE_DISPLAY_AMBIENT_SUPPORTED
+	bool "Enable changign Partial area in kickoff function"
+	---help---
+	Feature for changing Partial area of Ambient Display scenario.
+
+config LGE_DISPLAY_GRAM_CTRL
+	depends on LGE_DISPLAY_AMBIENT_SUPPORTED
+	bool "Use LGE_DISPLAY_GRAM_CTRL"
+	---help---
+	Say Y, if the DIC provides support for GRAM control interface
+	which enables partially or totally GRAM areas.
+
+config LGE_DISPLAY_ORBIT_SUPPORT
+	depends on LGE_DISPLAY_GRAM_CTRL
+	bool "Use LGE_DISPLAY_ORBIT_SUPPORT"
+	---help---
+	Say Y, if the DIC provides support for pixel shifting in AOD
+
+config LGE_DISPLAY_COMMON
+	depends on FB_MSM_MDSS
+	bool "Use LGE DISPLAY COMMON"
+	---help---
+	The LGE DISPLAY COMMON provides support for common display features made by LGE.
+
+config LGE_DISPLAY_BIST_MODE
+	depends on LGE_DISPLAY_COMMON
+	bool "use LGE Built-In Self Test pattern"
+	---help---
+	if you say yes here you get support for BIST Control.
+
+config LGE_DISPLAY_OVERRIDE_MDSS_DSI_PANEL_POWER_ON
+	depends on LGE_DISPLAY_COMMON
+	bool "Use OVERRIDE MDSS_DSI_PANEL_POWER_ON"
+	---help---
+	The LGE DISPLAY COMMON provides support for
+		ovrriding mdss_dsi_panel_power_on() function.
+
+config LGE_DISPLAY_OVERRIDE_MDSS_DSI_PANEL_POWER_OFF
+	depends on LGE_DISPLAY_COMMON
+	bool "Use OVERRIDE MDSS_DSI_PANEL_POWER_OFF"
+	---help---
+	The LGE DISPLAY COMMON provides support for
+		ovrriding mdss_dsi_panel_power_off() function.
+
+config LGE_DISPLAY_OVERRIDE_MDSS_DSI_PANEL_ON
+	depends on LGE_DISPLAY_COMMON
+	bool "Use OVERRIDE MDSS_DSI_PANEL_ON"
+	---help---
+	The LGE DISPLAY COMMON provides support for
+		ovrriding mdss_dsi_panel_on() function.
+
+config LGE_DISPLAY_OVERRIDE_MDSS_DSI_PANEL_OFF
+	depends on LGE_DISPLAY_COMMON
+	bool "Use OVERRIDE MDSS_DSI_PANEL_OFF"
+	---help---
+	The LGE DISPLAY COMMON provides support for
+		ovrriding mdss_dsi_panel_off() function.
+
+config LGE_DISPLAY_OVERRIDE_MDSS_DSI_PANEL_RESET
+	depends on LGE_DISPLAY_COMMON
+	bool "Use OVERRIDE MDSS_DSI_PANEL_RESET"
+	---help---
+	The LGE DISPLAY COMMON provides support for
+		ovrriding mdss_dsi_panel_reset() function.
+
+config LGE_DISPLAY_OVERRIDE_MDSS_DSI_CTRL_SHUTDOWN
+	depends on LGE_DISPLAY_COMMON
+	bool "Use OVERRIDE MDSS_DSI_CTRL_SHUTDOWN"
+	---help---
+	The LGE DISPLAY COMMON provides support for
+		ovrriding mdss_dsi_ctrl_shutdown() function.
+
+config LGE_DISPLAY_LUCY_COMMON
+	depends on LGE_DISPLAY_COMMON
+	bool "Use LGE DISPLAY LUCY COMMON"
+	---help---
+	The H1 COMMON provides support for LUCY panel
+
+config LGE_DISPLAY_JOAN_COMMON
+	depends on LGE_DISPLAY_COMMON
+	bool "Use LGE DISPLAY JOAN COMMON"
+	---help---
+	The H1 COMMON provides support for JOAN panel
+
+config LGE_DISPLAY_TAIMEN_COMMON
+	depends on LGE_DISPLAY_COMMON
+	bool "Use LGE DISPLAY TAIMEN COMMON"
+	---help---
+	The H1 COMMON provides support for TAIMEN panel
+
+config LGE_DISPLAY_VR_MODE
+	depends on LGE_DISPLAY_COMMON
+	bool "Use VR MODE"
+	---help---
+	The LGE vr mode
+
+config LGE_LCD_OFF_DIMMING
+	bool "Enable LCD DIMMING for FOTA"
+	depends on MACH_LGE
+	default n
+	---help---
+	Support for LCD DIMMING (for FOTA)
+config LGE_DISPLAY_XLOG_ENABLED
+	bool "Enable XLOG for MDSS and SDE Rotator"
+	depends on LGE_DISPLAY_COMMON
+	default n
+	---help---
+	Support XLOG for MDSS and SDE Rotator
+
+config LGE_DISPLAY_ERROR_DETECT
+	depends on LGE_DISPLAY_COMMON
+	bool "Use ERROR detect"
+	---help---
+	Support for SW43402 ERROR detection
+
+config LGE_INTERVAL_MONITOR
+	depends on LGE_DISPLAY_COMMON
+	bool "Frame Interval Monitor"
+	---help---
+	This feature provides Frame Interval Monitor scheme.
+
+config LGE_FBCN
+	depends on LGE_DISPLAY_COMMON
+	bool "Frame Based Clock Normalizer"
+	---help---
+	This feature provides Frame Based Clock Normalizer scheme.
+
+config LGE_DISPLAY_DISPLAYPORT_PROPRIETARY
+	depends on LGE_DISPLAY_COMMON
+	default n
+	bool "Use LGE_DISPLAY_DISPLAYPORT_PROPRIETARY"
+	---help---
+	This feature support proprietary adaptor such as apple.

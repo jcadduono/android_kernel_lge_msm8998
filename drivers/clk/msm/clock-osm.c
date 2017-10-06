@@ -352,6 +352,19 @@ const int clk_panic_reg_offsets[] = {WDOG_DOMAIN_PSTATE_STATUS,
 
 static struct dentry *osm_debugfs_base;
 
+#ifdef CONFIG_MACH_LGE
+struct clk_osm_reg_info {
+	u32 addr;
+	u32 value;
+	void __iomem *virt_addr;
+};
+
+struct clk_osm_panic_regs_info {
+	int reg_count;
+	struct clk_osm_reg_info *regs;
+};
+#endif
+
 struct clk_osm {
 	struct clk c;
 	struct osm_entry osm_table[OSM_TABLE_SIZE];
@@ -413,6 +426,9 @@ struct clk_osm {
 	u32 trace_periodic_timer;
 	bool trace_en;
 	bool wdog_trace_en;
+#ifdef CONFIG_MACH_LGE
+	struct clk_osm_panic_regs_info *panic_regs_info;
+#endif
 };
 
 static bool msm8998_v1;
@@ -3090,6 +3106,33 @@ static int clk_osm_panic_callback(struct notifier_block *nfb,
 				  unsigned long event,
 				  void *data)
 {
+#ifdef CONFIG_MACH_LGE
+	struct clk_osm *c = container_of(nfb,
+			struct clk_osm, panic_notifier);
+	struct clk_osm_panic_regs_info *regs_info = c->panic_regs_info;
+	struct clk_osm_reg_info *reg;
+
+	reg = &(regs_info->regs[0]);
+	reg->value = readl_relaxed(reg->virt_addr);
+	pr_err("DOM%d_PSTATE_STATUS[0x%08x]=0x%08x\n", c->cluster_num,
+				reg->addr, reg->value);
+
+	reg = &(regs_info->regs[1]);
+	reg->value = readl_relaxed(reg->virt_addr);
+	pr_err("DOM%d_PROGRAM_COUNTER[0x%08x]=0x%08x\n", c->cluster_num,
+				reg->addr, reg->value);
+
+	reg = &(regs_info->regs[2]);
+	reg->value = readl_relaxed(reg->virt_addr);
+	pr_err("APM_CTLER_STATUS_%d[0x%08x]=0x%08x\n", c->cluster_num,
+				reg->addr, reg->value);
+
+	/*
+	 * Barrier to ensure that the information has been updated in the
+	 * structure.
+	 */
+	mb();
+#else
 	int i;
 	u32 value;
 	struct clk_osm *c = container_of(nfb,
@@ -3101,6 +3144,7 @@ static int clk_osm_panic_callback(struct notifier_block *nfb,
 		pr_err("%s_%d=0x%08x\n", clk_panic_reg_names[i],
 		       c->cluster_num, value);
 	}
+#endif
 
 	return NOTIFY_OK;
 }
@@ -3179,6 +3223,47 @@ static int clk_osm_acd_init(struct clk_osm *c)
 
 	return 0;
 }
+
+#ifdef CONFIG_MACH_LGE
+static int panic_register_info_init(struct platform_device *pdev,
+		struct clk_osm *c)
+{
+	struct clk_osm_panic_regs_info *panic_regs_info;
+	struct clk_osm_reg_info *regs;
+	int i, reg_count;
+
+	panic_regs_info = devm_kzalloc(&pdev->dev, sizeof(*panic_regs_info),
+			GFP_KERNEL);
+	if (!panic_regs_info)
+		return -ENOMEM;
+
+	reg_count = 3;
+
+	regs = devm_kcalloc(&pdev->dev, reg_count, sizeof(*regs), GFP_KERNEL);
+	if (!regs)
+		return -ENOMEM;
+
+	regs[0].addr = c->pbases[OSM_BASE] + WDOG_DOMAIN_PSTATE_STATUS;
+	regs[1].addr = c->pbases[OSM_BASE] + WDOG_PROGRAM_COUNTER;
+	regs[2].addr = c->apm_ctrl_status;
+
+	for (i = 0; i < reg_count; i++) {
+		regs[i].virt_addr = devm_ioremap(&pdev->dev,regs[i].addr, 0x4);
+		if (!regs[i].virt_addr) {
+			pr_err("Unable to map panic register addr 0x%08x\n",
+				regs[i].addr);
+			return -EINVAL;
+		}
+		regs[i].value = 0xFFFFFFFF;
+	}
+
+	panic_regs_info->reg_count = reg_count;
+	panic_regs_info->regs = regs;
+	c->panic_regs_info = panic_regs_info;
+
+	return 0;
+}
+#endif
 
 static unsigned long init_rate = 300000000;
 static unsigned long osm_clk_init_rate = 200000000;
@@ -3375,6 +3460,11 @@ static int cpu_clock_osm_driver_probe(struct platform_device *pdev)
 
 	spin_lock_init(&pwrcl_clk.lock);
 	spin_lock_init(&perfcl_clk.lock);
+
+#ifdef CONFIG_MACH_LGE
+	panic_register_info_init(pdev, &pwrcl_clk);
+	panic_register_info_init(pdev, &perfcl_clk);
+#endif
 
 	pwrcl_clk.panic_notifier.notifier_call = clk_osm_panic_callback;
 	atomic_notifier_chain_register(&panic_notifier_list,

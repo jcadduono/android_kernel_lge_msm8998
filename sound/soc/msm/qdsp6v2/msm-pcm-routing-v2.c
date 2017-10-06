@@ -45,6 +45,10 @@
 #include "q6voice.h"
 #include "sound/q6lsm.h"
 
+#if defined(CONFIG_SND_LGE_TX_NXP_LIB)
+#include "lge_dsp_nxp_lib.h"
+#endif
+
 #ifndef CONFIG_DOLBY_DAP
 #undef DOLBY_ADM_COPP_TOPOLOGY_ID
 #define DOLBY_ADM_COPP_TOPOLOGY_ID 0xFFFFFFFE
@@ -110,6 +114,15 @@ static const char * const lsm_port_text[] = {
 	TERT_MI2S_TX_TEXT, QUAT_MI2S_TX_TEXT, ADM_LSM_TX_TEXT,
 	INT3_MI2S_TX_TEXT
 };
+#ifdef CONFIG_SND_USE_QUAT_MI2S
+
+static int msm_route_afe_quat_mi2s_vol_control= 0x2000;
+
+#define INT_RX_VOL_MAX_STEPS 0x2000
+#define INT_RX_VOL_GAIN 0x2000
+static const DECLARE_TLV_DB_LINEAR(afe_mi2s_vol_gain, 0,
+						INT_RX_VOL_MAX_STEPS);
+#endif /* CONFIG_SND_USE_QUAT_MI2S */
 
 struct msm_pcm_route_bdai_pp_params {
 	u16 port_id; /* AFE port ID */
@@ -1299,8 +1312,10 @@ int msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode,
 			bits_per_sample = msm_routing_get_bit_width(
 						msm_bedais[i].format);
 
-			app_type =
-			fe_dai_app_type_cfg[fedai_id][session_type][i].app_type;
+			app_type = (stream_type == SNDRV_PCM_STREAM_PLAYBACK) ?
+			fe_dai_app_type_cfg[fedai_id][session_type][i].app_type : 0;
+			pr_debug("%s: app_type : %d",__func__,app_type);
+
 			if (app_type) {
 				app_type_idx =
 				msm_pcm_routing_get_app_type_idx(app_type);
@@ -2600,6 +2615,22 @@ static int msm_routing_put_port_mixer(struct snd_kcontrol *kcontrol,
 	return 1;
 }
 
+#ifdef CONFIG_SND_USE_QUAT_MI2S
+static int msm_routing_get_afe_quat_mi2s_vol_mixer(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = msm_route_afe_quat_mi2s_vol_control;
+	return 0;
+}
+
+static int msm_routing_set_afe_quat_mi2s_vol_mixer(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	afe_loopback_gain(AFE_PORT_ID_QUATERNARY_MI2S_RX, ucontrol->value.integer.value[0]);
+	msm_route_afe_quat_mi2s_vol_control = ucontrol->value.integer.value[0];
+	return 0;
+}
+#endif /* CONFIG_SND_USE_QUAT_MI2S */
 static int msm_ec_ref_ch_get(struct snd_kcontrol *kcontrol,
 			       struct snd_ctl_elem_value *ucontrol)
 {
@@ -2849,6 +2880,12 @@ static int msm_routing_ec_ref_rx_put(struct snd_kcontrol *kcontrol,
 		msm_route_ec_ref_rx = 22;
 		ec_ref_port_id = AFE_PORT_ID_INT3_MI2S_TX;
 		break;
+#ifdef CONFIG_MACH_LGE
+	case 23:
+		msm_route_ec_ref_rx = 23;
+		ec_ref_port_id = SLIMBUS_7_RX;
+		break;
+#endif
 	default:
 		msm_route_ec_ref_rx = 0; /* NONE */
 		pr_err("%s EC ref rx %ld not valid\n",
@@ -2865,6 +2902,15 @@ static int msm_routing_ec_ref_rx_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+#ifdef CONFIG_MACH_LGE
+static const char *const ec_ref_rx[] = { "None", "SLIM_RX", "I2S_RX",
+	"PRI_MI2S_TX", "SEC_MI2S_TX",
+	"TERT_MI2S_TX", "QUAT_MI2S_TX", "SEC_I2S_RX", "PROXY_RX",
+	"SLIM_5_RX", "SLIM_1_TX", "QUAT_TDM_TX_1",
+	"QUAT_TDM_RX_0", "QUAT_TDM_RX_1", "QUAT_TDM_RX_2","SLIM_6_RX",
+	"TERT_MI2S_RX", "QUAT_MI2S_RX", "TERT_TDM_TX_0","USB_AUDIO_RX",
+	"INT0_MI2S_RX", "INT4_MI2S_RX", "INT3_MI2S_TX","SLIM_7_RX"};
+#else
 static const char *const ec_ref_rx[] = { "None", "SLIM_RX", "I2S_RX",
 	"PRI_MI2S_TX", "SEC_MI2S_TX",
 	"TERT_MI2S_TX", "QUAT_MI2S_TX", "SEC_I2S_RX", "PROXY_RX",
@@ -2873,6 +2919,7 @@ static const char *const ec_ref_rx[] = { "None", "SLIM_RX", "I2S_RX",
 	"TERT_MI2S_RX", "QUAT_MI2S_RX", "TERT_TDM_TX_0", "USB_AUDIO_RX",
 	"INT0_MI2S_RX", "INT4_MI2S_RX", "INT3_MI2S_TX"};
 
+#endif
 static const struct soc_enum msm_route_ec_ref_rx_enum[] = {
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ec_ref_rx), ec_ref_rx),
 };
@@ -9240,6 +9287,11 @@ static const struct snd_kcontrol_new tert_mi2s_rx_port_mixer_controls[] = {
 	SOC_SINGLE_EXT("SLIM_0_TX", MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
 	MSM_BACKEND_DAI_SLIMBUS_0_TX, 1, 0, msm_routing_get_port_mixer,
 	msm_routing_put_port_mixer),
+#ifdef CONFIG_SND_FM_RX_MI2S
+	SOC_SINGLE_EXT("SLIM_8_TX", MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
+	MSM_BACKEND_DAI_SLIMBUS_8_TX, 1, 0, msm_routing_get_port_mixer,
+	msm_routing_put_port_mixer),
+#endif  /* CONFIG_SND_FM_RX_MI2S */
 	SOC_SINGLE_EXT("QUAT_MI2S_TX", MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
 	MSM_BACKEND_DAI_QUATERNARY_MI2S_TX, 1, 0, msm_routing_get_port_mixer,
 	msm_routing_put_port_mixer),
@@ -9646,6 +9698,14 @@ static const struct snd_kcontrol_new aanc_slim_0_rx_mux[] = {
 		msm_routing_slim_0_rx_aanc_mux_get,
 		msm_routing_slim_0_rx_aanc_mux_put)
 };
+
+#ifdef CONFIG_SND_USE_QUAT_MI2S
+static const struct snd_kcontrol_new afe_quat_mi2s_vol_mixer_controls[] = {
+	SOC_SINGLE_EXT_TLV("QUAT_MI2S_RX Volume", SND_SOC_NOPM, 0,
+	INT_RX_VOL_GAIN, 0, msm_routing_get_afe_quat_mi2s_vol_mixer,
+	msm_routing_set_afe_quat_mi2s_vol_mixer, afe_mi2s_vol_gain),
+};
+#endif
 
 static int msm_routing_get_stereo_to_custom_stereo_control(
 					struct snd_kcontrol *kcontrol,
@@ -10216,6 +10276,278 @@ done:
 	return ret;
 }
 
+#if defined(CONFIG_SND_LGE_TX_NXP_LIB)
+static struct tx_control_param_t *param_value = NULL;
+static struct tx_control_param_t *default_params = NULL;
+
+
+static void AC_setHPF(struct tx_control_param_t *ac_params, int16_t cutoff)
+{
+    if(!(ac_params->Mode&AC_MODE_HPF))
+    {
+        ac_params->Mode |= AC_MODE_HPF;
+    }
+
+    if(0 == cutoff) {
+        ac_params->HighpassFrequency = AC_HPF_MIN;
+    }
+    else {
+        ac_params->HighpassFrequency = cutoff*AC_HPF_ENHANCED;
+        if(ac_params->HighpassFrequency > AC_HPF_MAX)
+        {
+           ac_params->HighpassFrequency = AC_HPF_MAX;
+        }
+    }
+
+    pr_info("%s: Mode = %d, HighpassFrequency = %d \n", __func__, ac_params->Mode, ac_params->HighpassFrequency);
+
+    return;
+}
+
+static void AC_setVolume(struct tx_control_param_t *ac_params, struct tx_control_param_t *ac_default_params, int16_t volume)
+{
+    int i=0;
+
+    pr_info("%s: volume = %d \n", __func__, volume);
+
+    if(volume == AC_VOL_VIDEO_MUTE) // video only.
+    {
+        ac_params->OutputGain = AC_OUTPUTGAIN_MIN;
+
+        pr_info("%s: Tx mute \n", __func__);
+        return;
+    }
+
+    if(volume >= 0) // Increasing output gain from default value.
+    {
+        if (volume == 0)
+	    {
+            ac_params->OutputGain = ac_default_params->OutputGain;
+        }
+        else
+        {
+            ac_params->OutputGain = (volume/10) + ac_default_params->OutputGain;
+        }
+    }
+    else
+    {
+        ac_params->OutputGain = ac_default_params->OutputGain;
+        for (i=0;i<3;i++)
+        {
+            ac_params->MdrcBand0_OutputLevels[i] = ac_default_params->MdrcBand0_OutputLevels[i] + (volume/10);
+        }
+    }
+
+    pr_info("%s: ac_params->OutputGain = %d, \n", __func__, ac_params->OutputGain);
+
+    return;
+}
+
+static void AC_setWNS(struct tx_control_param_t *ac_params, int16_t onoff)
+{
+    if(!onoff) {
+        ac_params->Mode &= ~(AC_MODE_WNS);
+    }
+    else {
+        ac_params->Mode |= AC_MODE_WNS;
+    }
+    pr_info("%s: onoff = %d,  Mode = %d \n", __func__, onoff, ac_params->Mode);
+
+    return;
+}
+
+static void AC_setHighSPL(struct tx_control_param_t *ac_params, int16_t onoff)
+{
+    if(!onoff) {
+        ac_params->Mode &= ~(AC_MODE_HIGH_SPL);
+    }
+    else {
+        ac_params->Mode |= AC_MODE_HIGH_SPL;
+    }
+    pr_info("%s: onoff = %d,  Mode = %d \n", __func__, onoff, ac_params->Mode);
+
+    return;
+}
+
+static void AC_setAGC(struct tx_control_param_t *ac_params, struct tx_control_param_t *ac_default_params, int16_t onoff)
+{
+    int16_t AGC_Knees[5] = {-40,-31,-18,-9,-9};
+    int i =0;
+
+    if(!onoff)
+    {
+        ac_params->Mode &= ~(AC_MODE_AVL);
+
+        for (i=0;i<4;i++)
+        {
+            ac_params->MdrcBand0_OutputLevels[i] = ac_default_params->MdrcBand0_OutputLevels[i];
+        }
+    }
+    else
+    {
+        ac_params->Mode |= AC_MODE_AVL;
+        for (i=0;i<4;i++)
+        {
+            ac_params->MdrcBand0_OutputLevels[i] = AGC_Knees[i];
+        }
+    }
+    pr_info("%s: onoff = %d,  Mode = %d \n", __func__, onoff, ac_params->Mode);
+
+    return;
+}
+
+static void AC_setLIMITER(struct tx_control_param_t *ac_params, int16_t threshold)
+{
+    if(threshold == 1) {
+        ac_params->Mode &= ~(AC_MODE_LIMITER);
+    }
+    else {
+        ac_params->Mode |= AC_MODE_LIMITER;
+        ac_params->LimiterThreshold = threshold;
+    }
+    pr_info("%s: Mode = %d, LimiterThreshold = %d \n", __func__, ac_params->Mode, ac_params->LimiterThreshold);
+
+    return;
+}
+
+static int msm_routing_get_tx_cfg_control(struct snd_kcontrol *kcontrol,
+					  struct snd_ctl_elem_value *ucontrol)
+{
+    int rc = 0;
+    int copp_idx;
+    uint32_t param_length = sizeof(struct tx_control_param_t);
+
+    pr_info("%s : enter \n", __func__);
+
+    copp_idx = adm_get_default_copp_idx(SLIMBUS_0_TX);
+    if ((copp_idx < 0) || (copp_idx > MAX_COPPS_PER_PORT)) {
+        pr_err("%s, no active copp to HiFi Rec. copp_idx:%d\n", __func__ , copp_idx);
+        return -EINVAL;
+    }
+    pr_info("%s: parameters copp_idx=%d, param_length=%d \n", __func__, copp_idx, param_length);
+
+    param_value = (struct tx_control_param_t*) kzalloc(param_length, GFP_KERNEL);
+    if (!param_value) {
+        pr_err("%s, param memory alloc failed\n", __func__);
+        return -ENOMEM;
+    }
+
+    rc = adm_get_params(SLIMBUS_0_TX, copp_idx, AUDIO_MODULE_AC, AUDIO_PARAM_AC,
+        param_length + sizeof(struct adm_param_data_v5), (char *)param_value);
+    if (rc) {
+        pr_err("%s: get parameters failed rc=%d\n", __func__, rc);
+        rc = -EINVAL;
+
+        goto get_hifi_rec_value_err;
+    }
+
+    if(!default_params) {
+        default_params = (struct tx_control_param_t*) kzalloc(param_length, GFP_KERNEL);
+        if (!default_params) {
+            pr_err("%s, param memory alloc failed\n", __func__);
+            rc = -ENOMEM;
+            goto get_hifi_rec_value_err;
+        }
+        memcpy((void *)default_params, (void *)param_value, param_length);
+    }
+
+    pr_info("%s: OperatingMode=%d, Mode=%d \n", __func__, param_value->OperatingMode, param_value->Mode);
+
+    return 0;
+
+get_hifi_rec_value_err:
+    kfree(param_value);
+    param_value = NULL;
+    return rc;
+}
+
+static int msm_routing_put_tx_cfg_control(struct snd_kcontrol *kcontrol,
+    struct snd_ctl_elem_value *ucontrol)
+{
+    int rc = 0;
+    int key_value;
+    struct tx_control_param_t *tx_control_param;
+
+    pr_info("%s : enter tx_enabled = %d\n", __func__, (int16_t)ucontrol->value.integer.value[0]);
+
+    if((!param_value) || (!default_params)) {
+        pr_err("%s: not called/complete msm_routing_get_tx_cfg_control() in advence\n", __func__);
+        rc = -EINVAL;
+        goto get_hifi_rec_value_err;
+    }
+
+    tx_control_param = param_value;
+    //pr_info("%s : OutputGain=%d, HighpassFrequency=%d, LimiterThreshold=%d \n",
+    //     __func__, tx_control_param->OutputGain, tx_control_param->HighpassFrequency, tx_control_param->LimiterThreshold);
+
+    if ( ucontrol->value.integer.value[0] == 0 ) {
+		goto get_hifi_rec_value_err;
+    } else if ( ucontrol->value.integer.value[0] == 1 ) {
+        AC_setVolume(tx_control_param, default_params, (int16_t)ucontrol->value.integer.value[1]);
+        AC_setWNS(tx_control_param, (int16_t)ucontrol->value.integer.value[2]);
+        AC_setAGC(tx_control_param, tx_control_param, (int16_t)ucontrol->value.integer.value[3]);
+        AC_setHPF(tx_control_param, (int16_t)ucontrol->value.integer.value[4]);
+        AC_setLIMITER(tx_control_param, (int16_t)ucontrol->value.integer.value[5]);
+        if ( ucontrol->value.integer.value[6] == 1 ) {
+            pr_info("%s: Pro Camcorder initialization. High SPL is Disabled.\n", __func__);
+            AC_setHighSPL(tx_control_param, 0);
+        }
+    } else if ( ucontrol->value.integer.value[0] == 2) {
+        key_value = ucontrol->value.integer.value[1];
+        switch(key_value) {
+            case 1 : //manual_gain
+                AC_setVolume(tx_control_param, default_params, (int16_t)ucontrol->value.integer.value[2]);
+                break;
+            case 2 : //manual_wnd
+                AC_setWNS(tx_control_param, (int16_t)ucontrol->value.integer.value[2]);
+                break;
+            case 3 : //manual_lcf
+                AC_setHPF(tx_control_param, (int16_t)ucontrol->value.integer.value[2]);
+                break;
+            case 4 : //manual_lmt
+                AC_setLIMITER(tx_control_param, (int16_t)ucontrol->value.integer.value[2]);
+                break;
+            case 5 : //high spl
+                AC_setHighSPL(tx_control_param, (int16_t)ucontrol->value.integer.value[2]);
+                break;
+            default :
+                break;
+        }
+    } else {
+        pr_info("%s: Normal Camcoder", __func__);
+        if ( ucontrol->value.integer.value[1] == 1 ) {
+            pr_info("%s: Normal Camcorder. High SPL is Disabled.\n", __func__);
+            AC_setHighSPL(tx_control_param, 0);
+        }
+    }
+
+    //pr_info("%s : OutputGain=%d, HighpassFrequency=%d, LimiterThreshold=%d \n", __func__,
+    //    tx_control_param->OutputGain, tx_control_param->HighpassFrequency, tx_control_param->LimiterThreshold);
+
+    rc = q6adm_set_tx_cfg_parms(SLIMBUS_0_TX, tx_control_param);
+
+    pr_info("%s: end result = %d Mode = %d \n", __func__, rc, tx_control_param->Mode);
+    return rc;
+
+get_hifi_rec_value_err:
+    if ( param_value != NULL ){
+        kfree(param_value);
+        param_value = NULL;
+    }
+    if ( default_params != NULL ){
+        kfree(default_params);
+        default_params = NULL;
+    }
+    return rc;
+}
+
+static const struct snd_kcontrol_new msm_hifi_rec_controls[] = {
+    SOC_SINGLE_MULTI_EXT("Audio Tx Config", SND_SOC_NOPM, 0,
+        0xFFFFFFFF, 0, 7, msm_routing_get_tx_cfg_control,
+        msm_routing_put_tx_cfg_control),
+};
+#endif
+
 static const struct snd_kcontrol_new msm_source_tracking_controls[] = {
 	{
 		.access = SNDRV_CTL_ELEM_ACCESS_READWRITE,
@@ -10408,6 +10740,9 @@ static const char * const slim0_rx_vi_fb_tx_rch_mux_text[] = {
 
 static const char * const mi2s_rx_vi_fb_tx_mux_text[] = {
 	"ZERO", "SENARY_TX"
+#if defined(CONFIG_SND_SOC_TFA9872)
+	,"TERT_MI2S_TX"
+#endif
 };
 
 static const char * const int4_mi2s_rx_vi_fb_tx_mono_mux_text[] = {
@@ -10428,6 +10763,9 @@ static const int const slim0_rx_vi_fb_tx_rch_value[] = {
 
 static const int const mi2s_rx_vi_fb_tx_value[] = {
 	MSM_BACKEND_DAI_MAX, MSM_BACKEND_DAI_SENARY_MI2S_TX
+#if defined(CONFIG_SND_SOC_TFA9872)
+	,MSM_BACKEND_DAI_TERTIARY_MI2S_TX
+#endif
 };
 
 static const int const int4_mi2s_rx_vi_fb_tx_mono_ch_value[] = {
@@ -10448,10 +10786,17 @@ static const struct soc_enum slim0_rx_vi_fb_rch_mux_enum =
 	ARRAY_SIZE(slim0_rx_vi_fb_tx_rch_mux_text),
 	slim0_rx_vi_fb_tx_rch_mux_text, slim0_rx_vi_fb_tx_rch_value);
 
+#if defined(CONFIG_SND_SOC_TFA9872)
+static const struct soc_enum mi2s_rx_vi_fb_mux_enum =
+	SOC_VALUE_ENUM_DOUBLE(0, MSM_BACKEND_DAI_TERTIARY_MI2S_RX, 0, 0,
+	ARRAY_SIZE(mi2s_rx_vi_fb_tx_mux_text),
+	mi2s_rx_vi_fb_tx_mux_text, mi2s_rx_vi_fb_tx_value);
+#else
 static const struct soc_enum mi2s_rx_vi_fb_mux_enum =
 	SOC_VALUE_ENUM_DOUBLE(0, MSM_BACKEND_DAI_PRI_MI2S_RX, 0, 0,
 	ARRAY_SIZE(mi2s_rx_vi_fb_tx_mux_text),
 	mi2s_rx_vi_fb_tx_mux_text, mi2s_rx_vi_fb_tx_value);
+#endif
 
 static const struct soc_enum int4_mi2s_rx_vi_fb_mono_ch_mux_enum =
 	SOC_VALUE_ENUM_DOUBLE(0, MSM_BACKEND_DAI_INT4_MI2S_RX, 0, 0,
@@ -11861,6 +12206,9 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"QUAT_MI2S_RX Audio Mixer", "MultiMedia6", "MM_DL6"},
 	{"QUAT_MI2S_RX Audio Mixer", "MultiMedia7", "MM_DL7"},
 	{"QUAT_MI2S_RX Audio Mixer", "MultiMedia8", "MM_DL8"},
+#ifdef CONFIG_SND_USE_QUAT_MI2S
+	{"QUAT_MI2S_RX Audio Mixer", "MultiMedia9", "MM_DL9"},
+#endif
 	{"QUAT_MI2S_RX Audio Mixer", "MultiMedia10", "MM_DL10"},
 	{"QUAT_MI2S_RX Audio Mixer", "MultiMedia11", "MM_DL11"},
 	{"QUAT_MI2S_RX Audio Mixer", "MultiMedia12", "MM_DL12"},
@@ -13365,6 +13713,9 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"PRI_MI2S_UL_HL", NULL, "PRI_MI2S_TX"},
 	{"SEC_MI2S_UL_HL", NULL, "SEC_MI2S_TX"},
 	{"SEC_MI2S_RX", NULL, "SEC_MI2S_DL_HL"},
+#ifdef CONFIG_SND_USE_QUAT_MI2S
+	{"QUAT_MI2S_RX", NULL, "QUAT_MI2S_DL_HL"},
+#endif
 	{"PRI_MI2S_RX", NULL, "PRI_MI2S_DL_HL"},
 	{"TERT_MI2S_RX", NULL, "TERT_MI2S_DL_HL"},
 	{"QUAT_MI2S_UL_HL", NULL, "QUAT_MI2S_TX"},
@@ -13727,6 +14078,9 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"SLIMBUS_0_RX Port Mixer", "TERT_MI2S_TX", "TERT_MI2S_TX"},
 	{"SLIMBUS_0_RX Port Mixer", "QUAT_MI2S_TX", "QUAT_MI2S_TX"},
 	{"SLIMBUS_0_RX Port Mixer", "INTERNAL_BT_SCO_TX", "INT_BT_SCO_TX"},
+#ifdef CONFIG_SND_USE_QUAT_MI2S
+	{"SLIMBUS_0_RX Port Mixer", "QUAT_MI2S_RX", "QUAT_MI2S_RX"},
+#endif
 	{"SLIMBUS_0_RX", NULL, "SLIMBUS_0_RX Port Mixer"},
 	{"AFE_PCM_RX Port Mixer", "INTERNAL_FM_TX", "INT_FM_TX"},
 	{"AFE_PCM_RX Port Mixer", "SLIM_1_TX", "SLIMBUS_1_TX"},
@@ -13915,7 +14269,9 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"TERT_MI2S_RX Port Mixer", "TERT_MI2S_TX", "TERT_MI2S_TX"},
 	{"TERT_MI2S_RX Port Mixer", "QUAT_MI2S_TX", "QUAT_MI2S_TX"},
 	{"TERT_MI2S_RX Port Mixer", "SLIM_0_TX", "SLIMBUS_0_TX"},
+#ifdef CONFIG_SND_FM_RX_MI2S
 	{"TERT_MI2S_RX Port Mixer", "SLIM_8_TX", "SLIMBUS_8_TX"},
+#endif  /* CONFIG_SND_FM_RX_MI2S */
 	{"TERT_MI2S_RX", NULL, "TERT_MI2S_RX Port Mixer"},
 
 	{"QUAT_MI2S_RX Port Mixer", "PRI_MI2S_TX", "PRI_MI2S_TX"},
@@ -14024,10 +14380,16 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"SLIM0_RX_VI_FB_LCH_MUX", "SLIM4_TX", "SLIMBUS_4_TX"},
 	{"SLIM0_RX_VI_FB_RCH_MUX", "SLIM4_TX", "SLIMBUS_4_TX"},
 	{"PRI_MI2S_RX_VI_FB_MUX", "SENARY_TX", "SENARY_TX"},
+#if defined(CONFIG_SND_SOC_TFA9872)
+	{"PRI_MI2S_RX_VI_FB_MUX", "TERT_MI2S_TX", "TERT_MI2S_TX"},
+#endif
 	{"INT4_MI2S_RX_VI_FB_MONO_CH_MUX", "INT5_MI2S_TX", "INT5_MI2S_TX"},
 	{"INT4_MI2S_RX_VI_FB_STEREO_CH_MUX", "INT5_MI2S_TX", "INT5_MI2S_TX"},
 	{"SLIMBUS_0_RX", NULL, "SLIM0_RX_VI_FB_LCH_MUX"},
 	{"SLIMBUS_0_RX", NULL, "SLIM0_RX_VI_FB_RCH_MUX"},
+#if defined(CONFIG_SND_SOC_TFA9872)
+    {"TERT_MI2S_RX", NULL, "PRI_MI2S_RX_VI_FB_MUX"},
+#endif
 	{"PRI_MI2S_RX", NULL, "PRI_MI2S_RX_VI_FB_MUX"},
 	{"INT4_MI2S_RX", NULL, "INT4_MI2S_RX_VI_FB_MONO_CH_MUX"},
 	{"INT4_MI2S_RX", NULL, "INT4_MI2S_RX_VI_FB_STEREO_CH_MUX"},
@@ -14664,6 +15026,11 @@ static int msm_routing_probe(struct snd_soc_platform *platform)
 
 	snd_soc_add_platform_controls(platform, lsm_controls,
 				      ARRAY_SIZE(lsm_controls));
+#ifdef CONFIG_SND_USE_QUAT_MI2S
+	snd_soc_add_platform_controls(platform,
+			afe_quat_mi2s_vol_mixer_controls,
+			ARRAY_SIZE(afe_quat_mi2s_vol_mixer_controls));
+#endif
 
 	snd_soc_add_platform_controls(platform, aanc_slim_0_rx_mux,
 				      ARRAY_SIZE(aanc_slim_0_rx_mux));
@@ -14709,6 +15076,12 @@ static int msm_routing_probe(struct snd_soc_platform *platform)
 
 	snd_soc_add_platform_controls(platform, aptx_dec_license_controls,
 					ARRAY_SIZE(aptx_dec_license_controls));
+
+#if defined(CONFIG_SND_LGE_TX_NXP_LIB)
+    snd_soc_add_platform_controls(platform, msm_hifi_rec_controls,
+                    ARRAY_SIZE(msm_hifi_rec_controls));
+#endif
+
 	snd_soc_add_platform_controls(platform, stereo_channel_reverse_control,
 				ARRAY_SIZE(stereo_channel_reverse_control));
 	return 0;

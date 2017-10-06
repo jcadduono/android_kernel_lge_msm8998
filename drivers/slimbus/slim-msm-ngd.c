@@ -26,6 +26,10 @@
 #include <linux/of_slimbus.h>
 #include <linux/timer.h>
 #include <linux/msm-sps.h>
+#ifdef CONFIG_MACH_LGE
+#include <linux/reboot.h>
+#include <soc/qcom/lge/board_lge.h>
+#endif
 #include <soc/qcom/service-locator.h>
 #include <soc/qcom/service-notifier.h>
 #include <soc/qcom/subsystem_notif.h>
@@ -1336,6 +1340,12 @@ hw_init_retry:
 				retries++;
 				goto hw_init_retry;
 			}
+#ifdef CONFIG_LGE_USB_FACTORY
+            if((lge_get_boot_mode() == LGE_BOOT_MODE_QEM_56K) || (lge_get_boot_mode() == LGE_BOOT_MODE_QEM_910K))
+				kernel_restart(NULL);
+            else
+			    panic("[LGE_BSP_AUDIO]SLIM power req failed all 3 times... reboot");
+#endif
 			return ret;
 		}
 	}

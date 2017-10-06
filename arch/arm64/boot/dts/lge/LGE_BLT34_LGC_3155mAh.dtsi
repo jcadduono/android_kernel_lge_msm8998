@@ -1,0 +1,71 @@
+
+qcom,LGE_BLT34_LGC_3155mAh {
+	qcom, = <24>;
+	/* #2821899_LGE_BLT34_3155mAh_averaged_MasterSlave_Mar6th2017*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <3155>;
+	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,batt-id-kohm = <100>;
+	qcom,battery-beta = <3435>;
+	qcom,battery-type = "LGE_BLT34_LGC_3155mAh";
+	qcom,checksum = <0x29F8>;
+	qcom,gui-version = "PMI8998GUI - 2.0.0.55";
+	qcom,fg-profile-data = [
+		 4D 1F FD 05
+		 FC 03 EA 06
+		 F8 1C DB FA
+		 D2 06 BE F4
+		 AB 18 DD 22
+		 A6 45 AA 52
+		 5B 00 00 00
+		 0D 00 00 00
+		 00 00 FE 07
+		 72 C4 89 C2
+		 23 00 08 00
+		 E2 DB 81 ED
+		 B5 06 B2 EA
+		 92 EB B1 0A
+		 97 E3 5F 42
+		 18 06 09 20
+		 27 00 14 00
+		 19 1F 47 FD
+		 9C 02 FC ED
+		 8E 1D 6B 07
+		 B8 12 3C 1D
+		 48 19 DE 22
+		 7B 45 FD 52
+		 4C 00 00 00
+		 0D 00 00 00
+		 00 00 A3 CC
+		 31 CA DD CD
+		 1F 00 00 00
+		 81 00 81 ED
+		 AD FD 0F EA
+		 B3 F2 B7 0A
+		 97 E2 0F 1A
+		 99 33 CC FF
+		 07 10 00 00
+		 FF 0C 66 46
+		 1F 00 40 00
+		 90 01 0A FA
+		 FF 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+	];
+};

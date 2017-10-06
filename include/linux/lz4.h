@@ -10,7 +10,7 @@
  * published by the Free Software Foundation.
  */
 #define LZ4_MEM_COMPRESS	(16384)
-#define LZ4HC_MEM_COMPRESS	(262144 + (2 * sizeof(unsigned char *)))
+#define LZ4HC_MEM_COMPRESS	(262144 + (2 * sizeof(unsigned char *))
 
 /*
  * lz4_compressbound()

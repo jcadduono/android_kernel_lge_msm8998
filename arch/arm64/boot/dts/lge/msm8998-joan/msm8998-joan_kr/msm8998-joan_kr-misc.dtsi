@@ -1,0 +1,44 @@
+/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	gpio_keys {
+		compatible = "gpio-keys";
+		input-name = "gpio-keys";
+		status = "okay";
+
+		vol_up {
+			label = "volume_up";
+			gpios = <&pm8998_gpios 6 0x1>;
+			linux,input-type = <1>;
+			linux,code = <115>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+
+	};
+
+    vibrator:vibrator@fd8c3420 {
+        status = "disabled";
+        compatible = "dongwoon,dw7800";
+        vpwr-on = <0>;
+    };
+};
+
+&i2c_1 {
+    dw7800@59 {
+        compatible = "dongwoon,dw7800";
+        status = "ok";
+        reg = <0x59>;
+        dongwoon,vpwr-on = <0>;
+    };
+};

@@ -366,7 +366,24 @@ static void audio_send(struct audio_dev *audio)
 	s64 msecs;
 	s64 frames;
 	ktime_t now;
+#ifdef CONFIG_LGE_USB_GADGET
+	unsigned long flags;
 
+	spin_lock_irqsave(&audio->lock, flags);
+	/* audio->substream will be null if we have been closed */
+	if (!audio->substream) {
+		spin_unlock_irqrestore(&audio->lock, flags);
+		return;
+	}
+	/* audio->buffer_pos will be null if we have been stopped */
+	if (!audio->buffer_pos) {
+		spin_unlock_irqrestore(&audio->lock, flags);
+		return;
+	}
+
+	runtime = audio->substream->runtime;
+	spin_unlock_irqrestore(&audio->lock, flags);
+#else
 	/* audio->substream will be null if we have been closed */
 	if (!audio->substream)
 		return;
@@ -375,6 +392,7 @@ static void audio_send(struct audio_dev *audio)
 		return;
 
 	runtime = audio->substream->runtime;
+#endif
 
 	/* compute number of frames to send */
 	now = ktime_get();
@@ -397,8 +415,28 @@ static void audio_send(struct audio_dev *audio)
 
 	while (frames > 0) {
 		req = audio_req_get(audio);
+#ifdef CONFIG_LGE_USB_GADGET
+		spin_lock_irqsave(&audio->lock, flags);
+		if (!req) {
+			spin_unlock_irqrestore(&audio->lock, flags);
+			break;
+		}
+		/* audio->substream will be null if we have been closed */
+		if (!audio->substream) {
+			spin_unlock_irqrestore(&audio->lock, flags);
+			return;
+		}
+		/* audio->buffer_pos will be null if we have been stopped */
+		if (!audio->buffer_pos) {
+			spin_unlock_irqrestore(&audio->lock, flags);
+			pr_debug("%s: audio->buffer_pos is NULL, return!\n", __func__);
+			audio_req_put(audio, req);
+			return;
+		}
+#else
 		if (!req)
 			break;
+#endif
 
 		length = frames_to_bytes(runtime, frames);
 		if (length > IN_EP_MAX_PACKET_SIZE)
@@ -424,6 +462,9 @@ static void audio_send(struct audio_dev *audio)
 		}
 
 		req->length = length;
+#ifdef CONFIG_LGE_USB_GADGET
+		spin_unlock_irqrestore(&audio->lock, flags);
+#endif
 		ret = usb_ep_queue(audio->in_ep, req, GFP_ATOMIC);
 		if (ret < 0) {
 			pr_err("usb_ep_queue failed ret: %d\n", ret);
@@ -999,8 +1040,9 @@ static struct usb_function_instance *audio_source_alloc_inst(void)
 	void *err_ptr;
 	int err = 0;
 	char device_name[AUDIO_SOURCE_DEV_NAME_LENGTH];
+#ifndef CONFIG_LGE_USB_GADGET
 	static u8 count;
-
+#endif
 	fi_audio = kzalloc(sizeof(*fi_audio), GFP_KERNEL);
 	if (!fi_audio)
 		return ERR_PTR(-ENOMEM);
@@ -1018,8 +1060,13 @@ static struct usb_function_instance *audio_source_alloc_inst(void)
 	config_group_init_type_name(&fi_audio->func_inst.group, "",
 						&audio_source_func_type);
 
+#ifdef CONFIG_LGE_USB_GADGET
+	snprintf(device_name, AUDIO_SOURCE_DEV_NAME_LENGTH,
+					"f_audio_source");
+#else
 	snprintf(device_name, AUDIO_SOURCE_DEV_NAME_LENGTH,
 					"f_audio_source%d", count++);
+#endif
 
 	dev = create_function_device(device_name);
 

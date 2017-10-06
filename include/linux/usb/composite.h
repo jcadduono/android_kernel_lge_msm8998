@@ -204,6 +204,11 @@ struct usb_function {
 	struct usb_os_desc_table	*os_desc_table;
 	unsigned			os_desc_n;
 
+#ifdef CONFIG_LGE_USB_GADGET_MULTI_CONFIG
+	bool				multi_config_support:1;
+	void				*priv;
+#endif
+
 	/* REVISIT:  bind() functions can be marked __init, which
 	 * makes trouble for section mismatch analysis.  See if
 	 * we can't restructure things to avoid mismatching.
@@ -219,6 +224,11 @@ struct usb_function {
 	struct module		*mod;
 
 	/* runtime state management */
+#ifdef CONFIG_LGE_USB_GADGET_MULTI_CONFIG
+	int			(*set_config)(struct usb_function *,
+					unsigned number);
+	int			(*set_mac_os)(struct usb_function *);
+#endif
 	int			(*set_alt)(struct usb_function *,
 					unsigned interface, unsigned alt);
 	int			(*get_alt)(struct usb_function *,
@@ -520,6 +530,9 @@ struct usb_composite_dev {
 
 	unsigned			setup_pending:1;
 	unsigned			os_desc_pending:1;
+#ifdef CONFIG_LGE_USB_GADGET_MULTI_CONFIG
+	unsigned			is_mac_os:1;
+#endif
 };
 
 extern int usb_string_id(struct usb_composite_dev *c);

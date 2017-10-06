@@ -985,5 +985,13 @@ config REGULATOR_STUB
 	  Clients can use the real regulator device names with proper
 	  constraint checking while the real driver is being developed.
 
+config LGE_CPR_MANAGER
+	bool "LGE Modifications of CPR"
+	depends on OF
+	depends on REGULATOR_CPR3
+	help
+	  This driver loads voltage offsets of ap controlled CPR rails.
+	  These offsets are used by QCT CPR driver to modify voltages.
+
 endif
 

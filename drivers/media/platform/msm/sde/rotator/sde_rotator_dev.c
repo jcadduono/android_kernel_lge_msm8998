@@ -99,6 +99,7 @@ static uint32_t sde_rotator_get_flags_from_ctx(struct sde_rotator_ctx *ctx)
 	return ret_flags;
 }
 
+#define CONFIG_LGE_ROTATOR_ENHANCE
 /*
  * sde_rotator_get_config_from_ctx - Fill rotator configure structure.
  * @ctx: Pointer to rotator ctx.
@@ -131,6 +132,10 @@ static void sde_rotator_get_config_from_ctx(struct sde_rotator_ctx *ctx,
 	 * this configuration will determine the overall static compression
 	 * ratio of the session.
 	 */
+#ifdef CONFIG_LGE_ROTATOR_ENHANCE
+	if (config->frame_rate == 30)
+		config->frame_rate = 60;
+#endif
 	if (ctx->vbinfo_out)
 		config->input.comp_ratio = ctx->vbinfo_out[0].comp_ratio;
 	if (ctx->vbinfo_cap)

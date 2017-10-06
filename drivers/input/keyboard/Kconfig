@@ -719,4 +719,10 @@ config KEYBOARD_BCM
 	  To compile this driver as a module, choose M here: the
 	  module will be called bcm-keypad.
 
+config LGE_HALL_IC
+	bool "LGE Hall IC"
+	depends on KEYBOARD_GPIO
+	default n
+	help
+	  Say Y here to enable the hall-ic sensor
 endif

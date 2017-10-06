@@ -467,4 +467,21 @@ config QCOM_SPMI_TEMP_ALARM
 	  real time die temperature if an ADC is present or an estimate of the
 	  temperature based upon the over temperature stage value.
 
+config LGE_PM_THERMAL_LOG
+	tristate "LGE add debugging logs or debugfs etc"
+	depends on THERMAL
+	help
+	  add more logs or debugfs for debugging
+
+config LGE_PM_THERMAL_VTS
+	tristate "LGE Virtual Temp Sensor Driver"
+	depends on THERMAL
+	help
+	  This enables virtual temp sensor driver.
+
+config LGE_PM_THERMAL_SEPARATE_BOOT_FREQ_MITIGATION
+	tristate "Separate frequency mitigation boot & runtime"
+	depends on THERMAL
+	help
+	  This enables separate frequency mitigation boot & runtime
 endif

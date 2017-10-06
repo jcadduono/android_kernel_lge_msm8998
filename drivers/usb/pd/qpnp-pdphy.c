@@ -687,7 +687,11 @@ static irqreturn_t pdphy_msg_rx_irq_thread(int irq, void *data)
 		goto done;
 
 	frame_type = rx_status & RX_FRAME_TYPE;
+#ifdef CONFIG_LGE_USB_COMPLIANCE_TEST
+	if (frame_type != SOP_MSG && frame_type != SOPI_MSG) {
+#else
 	if (frame_type != SOP_MSG) {
+#endif
 		dev_err(pdphy->dev, "%s:unsupported frame type %d\n",
 			__func__, frame_type);
 		goto done;

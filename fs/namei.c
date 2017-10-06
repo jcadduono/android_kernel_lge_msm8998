@@ -39,6 +39,9 @@
 
 #include "internal.h"
 #include "mount.h"
+#ifdef CONFIG_SDCARD_FS
+#include "sdcardfs/sdcardfs.h"
+#endif
 
 /* [Feb-1997 T. Schoebel-Theuer]
  * Fundamental changes in the pathname lookup mechanisms (namei)
@@ -3896,7 +3899,11 @@ EXPORT_SYMBOL(vfs_unlink);
  * writeout happening, and we don't want to prevent access to the directory
  * while waiting on the I/O.
  */
+#ifdef CONFIG_SDCARD_FS
+long do_unlinkat(int dfd, const char __user *pathname, bool propagate)
+#else
 static long do_unlinkat(int dfd, const char __user *pathname)
+#endif
 {
 	int error;
 	struct filename *name;
@@ -3907,6 +3914,11 @@ static long do_unlinkat(int dfd, const char __user *pathname)
 	struct inode *inode = NULL;
 	struct inode *delegated_inode = NULL;
 	unsigned int lookup_flags = 0;
+#ifdef CONFIG_SDCARD_FS
+	/* temp code to avoid issue */
+	char *path_buf = NULL;
+	char *propagate_path = NULL;
+#endif
 retry:
 	name = user_path_parent(dfd, pathname,
 				&path, &last, &type, lookup_flags);
@@ -3914,6 +3926,10 @@ retry:
 		return PTR_ERR(name);
 
 	error = -EISDIR;
+#ifdef CONFIG_SDCARD_FS
+	propagate_path = NULL;
+#endif
+
 	if (type != LAST_NORM)
 		goto exit1;
 
@@ -3931,6 +3947,22 @@ retry_deleg:
 		inode = dentry->d_inode;
 		if (d_is_negative(dentry))
 			goto slashes;
+#ifdef CONFIG_SDCARD_FS
+		/* temp code to avoid issue */
+		if (inode->i_sb->s_op->unlink_callback && propagate) {
+			struct inode *lower_inode = inode;
+			while (lower_inode->i_op->get_lower_inode) {
+				if (inode->i_sb->s_magic == SDCARDFS_SUPER_MAGIC
+						&& SDCARDFS_SB(inode->i_sb)->options.label) {
+					path_buf = kmalloc(PATH_MAX, GFP_KERNEL);
+					if(!path_buf)
+						break;
+					propagate_path = dentry_path_raw(dentry, path_buf, PATH_MAX);
+				}
+				lower_inode = lower_inode->i_op->get_lower_inode(lower_inode);
+			}
+		}
+#endif
 		ihold(inode);
 		error = security_path_unlink(&path, dentry);
 		if (error)
@@ -3940,6 +3972,14 @@ exit2:
 		dput(dentry);
 	}
 	mutex_unlock(&path.dentry->d_inode->i_mutex);
+#ifdef CONFIG_SDCARD_FS
+	/* temp code to avoid issue */
+	if (propagate_path && !error && propagate) {
+		inode->i_sb->s_op->unlink_callback(inode, propagate_path);
+	}
+	if (path_buf)
+		kfree(path_buf);
+#endif
 	if (inode)
 		iput(inode);	/* truncate the inode here */
 	inode = NULL;
@@ -3976,13 +4016,20 @@ SYSCALL_DEFINE3(unlinkat, int, dfd, const char __user *, pathname, int, flag)
 
 	if (flag & AT_REMOVEDIR)
 		return do_rmdir(dfd, pathname);
-
+#ifdef CONFIG_SDCARD_FS
+	return do_unlinkat(dfd, pathname, true);
+#else
 	return do_unlinkat(dfd, pathname);
+#endif
 }
 
 SYSCALL_DEFINE1(unlink, const char __user *, pathname)
 {
+#ifdef CONFIG_SDCARD_FS
+	return do_unlinkat(AT_FDCWD, pathname, true);
+#else
 	return do_unlinkat(AT_FDCWD, pathname);
+#endif
 }
 
 int vfs_symlink2(struct vfsmount *mnt, struct inode *dir, struct dentry *dentry, const char *oldname)
@@ -4416,10 +4463,28 @@ SYSCALL_DEFINE5(renameat2, int, olddfd, const char __user *, oldname,
 	unsigned int lookup_flags = 0, target_flags = LOOKUP_RENAME_TARGET;
 	bool should_retry = false;
 	int error;
+#ifdef CONFIG_SDCARD_FS
+	/* we need to propagate rename for all path(default/read/write) */
+	struct inode *inode = NULL;
+	bool propagate_enable = true;
+	char *path_old_buf = NULL;
+	char *path_new_buf = NULL;
+	char *propagate_old_path = NULL;
+	char *propagate_new_path = NULL;
+#endif
 
-	if (flags & ~(RENAME_NOREPLACE | RENAME_EXCHANGE | RENAME_WHITEOUT))
+#ifdef CONFIG_SDCARD_FS
+	if (flags & ~(RENAME_NOREPLACE | RENAME_EXCHANGE | RENAME_WHITEOUT | RENAME_NOPROPAGATE))
 		return -EINVAL;
 
+	if (flags & RENAME_NOPROPAGATE) {
+		flags &= ~RENAME_NOPROPAGATE;
+		propagate_enable = false;
+	}
+#else
+	if (flags & ~(RENAME_NOREPLACE | RENAME_EXCHANGE | RENAME_WHITEOUT))
+		return -EINVAL;
+#endif
 	if ((flags & (RENAME_NOREPLACE | RENAME_WHITEOUT)) &&
 	    (flags & RENAME_EXCHANGE))
 		return -EINVAL;
@@ -4509,6 +4574,27 @@ retry_deleg:
 	if (new_dentry == trap)
 		goto exit5;
 
+#ifdef CONFIG_SDCARD_FS
+	/* we need to propagate rename for all path(default/read/write) */
+	if (old_path.dentry->d_inode->i_sb->s_op->rename_callback && propagate_enable) {
+		struct inode *lower_old_inode = old_path.dentry->d_inode;
+		struct inode *lower_new_inode = new_path.dentry->d_inode;
+		inode = old_path.dentry->d_inode;
+
+		while (lower_old_inode->i_op->get_lower_inode) {
+			if (lower_old_inode->i_sb->s_magic == SDCARDFS_SUPER_MAGIC
+					&& SDCARDFS_SB(lower_old_inode->i_sb)->options.label) {
+				path_old_buf = kmalloc(PATH_MAX, GFP_KERNEL);
+				path_new_buf = kmalloc(PATH_MAX, GFP_KERNEL);
+				propagate_old_path = dentry_path_raw(old_path.dentry, path_old_buf, PATH_MAX);
+				propagate_new_path = dentry_path_raw(new_path.dentry, path_new_buf, PATH_MAX);
+			}
+			lower_old_inode = lower_old_inode->i_op->get_lower_inode(lower_old_inode);
+			lower_new_inode = lower_new_inode->i_op->get_lower_inode(lower_new_inode);
+		}
+	}
+#endif
+
 	error = security_path_rename(&old_path, old_dentry,
 				     &new_path, new_dentry, flags);
 	if (error)
@@ -4522,6 +4608,15 @@ exit4:
 	dput(old_dentry);
 exit3:
 	unlock_rename(new_path.dentry, old_path.dentry);
+#ifdef CONFIG_SDCARD_FS
+	/* we need to propagate rename for all path(default/read/write) */
+	if (path_old_buf && !IS_ERR(path_old_buf) && path_new_buf && !IS_ERR(path_new_buf)
+			&& !error && propagate_enable) {
+		inode->i_sb->s_op->rename_callback(inode, propagate_old_path, propagate_new_path);
+		kfree(path_old_buf);
+		kfree(path_new_buf);
+	}
+#endif
 	if (delegated_inode) {
 		error = break_deleg_wait(&delegated_inode);
 		if (!error)
@@ -4611,7 +4706,11 @@ int generic_readlink(struct dentry *dentry, char __user *buffer, int buflen)
 EXPORT_SYMBOL(generic_readlink);
 
 /* get the link contents into pagecache */
+#ifdef CONFIG_SDCARD_FS
+char *page_getlink(struct dentry * dentry, struct page **ppage)
+#else
 static char *page_getlink(struct dentry * dentry, struct page **ppage)
+#endif
 {
 	char *kaddr;
 	struct page *page;

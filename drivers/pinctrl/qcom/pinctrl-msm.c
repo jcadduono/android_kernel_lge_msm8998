@@ -35,6 +35,10 @@
 #include "pinctrl-msm.h"
 #include "../pinctrl-utils.h"
 
+#ifdef CONFIG_LGE_PM
+#include "linux/suspend.h"
+#endif
+
 #define MAX_NR_GPIO 300
 #define PS_HOLD_OFFSET 0x820
 
@@ -464,6 +468,26 @@ static void msm_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
 #ifdef CONFIG_DEBUG_FS
 #include <linux/seq_file.h>
 
+#if defined(CONFIG_MACH_MSM8998_LUCY) || defined(CONFIG_MACH_MSM8998_JOAN)
+/*
+   gpio81 ~ 84 can be controlled only by TZ
+   Non-HLOS/trustzone/core/buses/qup_accesscontrol/honeybadger/config/QUPAC_8998_Access.xml
+   <device id=BLSP_QUP12_DEV_ACCESS>
+   <props name="PERIPH ID"           type=DALPROP_ATTR_TYPE_UINT32>     BLSP_QUP12            </props>
+   <props name="GPIO range"          type=DALPROP_ATTR_TYPE_BYTE_SEQ>   81, 82, 83, 84, end   </props>
+   <props name="IS_GPIO_PROTECTED"   type=DALPROP_ATTR_TYPE_UINT32>     1                     </props>
+   <props name="RW_ACCESS_LIST"      type=DALPROP_ATTR_TYPE_BYTE_SEQ>   AC_TZ, end            </props>
+   <props name="IS_PERSISTENT"       type=DALPROP_ATTR_TYPE_UINT32>     1                     </props>
+ */
+bool msm_gpio_check_access(int gpio)
+{
+	if(gpio < 81 || gpio > 84)
+		return true;
+	else
+		return false;
+}
+EXPORT_SYMBOL(msm_gpio_check_access);
+#endif
 static void msm_gpio_dbg_show_one(struct seq_file *s,
 				  struct pinctrl_dev *pctldev,
 				  struct gpio_chip *chip,
@@ -504,8 +528,15 @@ static void msm_gpio_dbg_show(struct seq_file *s, struct gpio_chip *chip)
 	unsigned i;
 
 	for (i = 0; i < chip->ngpio; i++, gpio++) {
+#if defined(CONFIG_MACH_MSM8998_LUCY) || defined(CONFIG_MACH_MSM8998_JOAN)
+		if(msm_gpio_check_access(gpio) == true)
+		{
+#endif
 		msm_gpio_dbg_show_one(s, NULL, chip, i, gpio);
 		seq_puts(s, "\n");
+#if defined(CONFIG_MACH_MSM8998_LUCY) || defined(CONFIG_MACH_MSM8998_JOAN)
+		}
+#endif
 	}
 }
 
@@ -784,6 +815,15 @@ static void msm_gpio_irq_handler(struct irq_desc *desc)
 		val = readl(pctrl->regs + g->intr_status_reg);
 		if (val & BIT(g->intr_status_bit)) {
 			irq_pin = irq_find_mapping(gc->irqdomain, i);
+#ifdef CONFIG_LGE_PM
+			if (suspend_debug_irq_pin())
+				printk("%s : irq_pin = %d, GPIO[%d], "
+					"g->intr_status_reg = %u, "
+					"g->intr_cfg_reg = %u\n",
+					__func__, irq_pin,
+					i, val,
+					readl(pctrl->regs + g->intr_cfg_reg));
+#endif
 			generic_handle_irq(irq_pin);
 			handled++;
 		}

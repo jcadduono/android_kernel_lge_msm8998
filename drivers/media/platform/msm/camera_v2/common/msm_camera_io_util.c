@@ -21,10 +21,14 @@
 #include "msm_camera_io_util.h"
 
 #define BUFF_SIZE_128 128
-
+//#define __DEBUG
 #undef CDBG
+#ifdef __DEBUG
+#define CDBG(fmt, args...) pr_err(fmt, ##args)
+#else
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
 
+#endif
 void msm_camera_io_w(u32 data, void __iomem *addr)
 {
 	CDBG("%s: 0x%pK %08x\n", __func__,  (addr), (data));

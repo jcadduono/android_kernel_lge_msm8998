@@ -56,6 +56,18 @@
 #include "mdss_smmu.h"
 #include "mdss_mdp.h"
 
+#ifdef CONFIG_MACH_LGE
+#include <soc/qcom/lge/board_lge.h>
+#include <linux/timer.h>
+#include <linux/debugfs.h>
+#endif
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+#include "lge/lge_mdss_display.h"
+#endif
+#if defined(CONFIG_LGE_INTERVAL_MONITOR)
+#include "lge/lge_interval_monitor.h"
+#endif
+
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MDSS_FB_NUM 3
 #else
@@ -92,6 +104,10 @@ static u32 mdss_fb_pseudo_palette[16] = {
 	0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff
 };
 
+#if defined(CONFIG_LGE_BROADCAST_TDMB) || defined(CONFIG_LGE_BROADCAST_ISDBT_JAPAN)
+extern struct mdp_csc_cfg dmb_csc_convert;
+extern int pp_set_dmb_status(int flag);
+#endif /* LGE_BROADCAST */
 static struct msm_mdp_interface *mdp_instance;
 
 static int mdss_fb_register(struct msm_fb_data_type *mfd);
@@ -271,13 +287,57 @@ static int mdss_fb_notify_update(struct msm_fb_data_type *mfd,
 	return ret;
 }
 
+#if defined(CONFIG_MACH_LGE)
+#define BL_ENABLE_TIME_SIZE 19
+char bl_enable_time[] = "01-01 00:00:00.000";
+int prev_value = 0;
+
+static struct dentry *debugfs_bl_enable_time;
+
+static int bl_enable_time_show(struct seq_file *m, void *unused)
+{
+	seq_printf(m, "%s\n", bl_enable_time);
+	return 0;
+}
+
+static int bl_enable_time_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, bl_enable_time_show, NULL);
+}
+
+static const struct file_operations bl_enable_time_fops = {
+	.open		= bl_enable_time_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+};
+#endif
+
 static int lcd_backlight_registered;
 
+#if defined(CONFIG_LGE_DISPLAY_VIDEO_ENHANCEMENT)
+void mdss_fb_set_bl_brightness(struct led_classdev *led_cdev,
+				      enum led_brightness value)
+#else
 static void mdss_fb_set_bl_brightness(struct led_classdev *led_cdev,
 				      enum led_brightness value)
+#endif /* CONFIG_LGE_DISPLAY_VIDEO_ENHANCEMENT */
 {
 	struct msm_fb_data_type *mfd = dev_get_drvdata(led_cdev->dev->parent);
 	int bl_lvl;
+
+#if defined(CONFIG_MACH_LGE)
+	struct timespec time;
+	struct tm tmresult;
+	int create_debugfs = 0;
+#endif
+#if defined(CONFIG_LGE_DISPLAY_AMBIENT_SUPPORTED)
+	bool isdoze;
+	int panel_state;
+
+	panel_state = mfd->panel_info->panel_power_state;
+	isdoze = (((panel_state == MDSS_PANEL_POWER_LP1) ||
+			(panel_state == MDSS_PANEL_POWER_LP2)) ? true : false);
+#endif
 
 	if (mfd->boot_notification_led) {
 		led_trigger_event(mfd->boot_notification_led, 0);
@@ -295,18 +355,50 @@ static void mdss_fb_set_bl_brightness(struct led_classdev *led_cdev,
 	if (!bl_lvl && value)
 		bl_lvl = 1;
 
-	if (!IS_CALIB_MODE_BL(mfd) && (!mfd->ext_bl_ctrl || !value ||
-							!mfd->bl_level)) {
+	if (!IS_CALIB_MODE_BL(mfd) &&
+#if defined(CONFIG_LGE_DISPLAY_AMBIENT_SUPPORTED)
+			(!isdoze) &&
+#endif
+			(!mfd->ext_bl_ctrl || !value || !mfd->bl_level)) {
 		mutex_lock(&mfd->bl_lock);
 		mdss_fb_set_backlight(mfd, bl_lvl);
 		mutex_unlock(&mfd->bl_lock);
 	}
+
+#if defined(CONFIG_MACH_LGE)
+	if (!create_debugfs) {
+		debugfs_bl_enable_time = debugfs_create_file("bl_enable_time",
+				S_IRUGO, NULL, NULL,
+				&bl_enable_time_fops);
+		create_debugfs = 1;
+	}
+	if (value > 0 && prev_value == 0) {
+		time = __current_kernel_time();
+		time_to_tm(time.tv_sec, sys_tz.tz_minuteswest * 60 * (-1),
+				&tmresult);
+		snprintf(bl_enable_time,
+				BL_ENABLE_TIME_SIZE,
+				"%02d-%02d %02d:%02d:%02d.%03lu\n",
+				tmresult.tm_mon+1,
+				tmresult.tm_mday,
+				tmresult.tm_hour,
+				tmresult.tm_min,
+				tmresult.tm_sec,
+				(unsigned long) time.tv_nsec/1000000);
+		printk(KERN_EMERG "bl_enable_time:%s", bl_enable_time);
+	}
+	prev_value = value;
+#endif
+
 	mfd->bl_level_usr = bl_lvl;
 }
 
 static enum led_brightness mdss_fb_get_bl_brightness(
 	struct led_classdev *led_cdev)
 {
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+	return led_cdev->brightness;
+#else  /* qct original */
 	struct msm_fb_data_type *mfd = dev_get_drvdata(led_cdev->dev->parent);
 	enum led_brightness value;
 
@@ -314,9 +406,14 @@ static enum led_brightness mdss_fb_get_bl_brightness(
 			  mfd->panel_info->brightness_max);
 
 	return value;
+#endif
 }
 
+#if defined(CONFIG_LGE_DISPLAY_VIDEO_ENHANCEMENT)
+struct led_classdev backlight_led = {
+#else
 static struct led_classdev backlight_led = {
+#endif /* CONFIG_LGE_DISPLAY_VIDEO_ENHANCEMENT */
 	.name           = "lcd-backlight",
 	.brightness     = MDSS_MAX_BL_BRIGHTNESS / 2,
 	.brightness_set = mdss_fb_set_bl_brightness,
@@ -1277,10 +1374,17 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	mfd->fb_imgType = MDP_RGBA_8888;
 	mfd->calib_mode_bl = 0;
 	mfd->unset_bl_level = U32_MAX;
+#if defined(CONFIG_LGE_DISPLAY_AMBIENT_SUPPORTED)
+	mfd->unset_bl_level_ex = U32_MAX;
+#endif
 	mfd->bl_extn_level = -1;
 	mfd->bl_level_usr = backlight_led.brightness;
 
 	mfd->pdev = pdev;
+
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+	lge_mdss_fb_init(mfd);
+#endif
 
 	mfd->split_fb_left = mfd->split_fb_right = 0;
 
@@ -1313,6 +1417,9 @@ static int mdss_fb_probe(struct platform_device *pdev)
 		return rc;
 
 	mdss_fb_create_sysfs(mfd);
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+	lge_mdss_fb_create_sysfs(mfd);
+#endif
 	mdss_fb_send_panel_event(mfd, MDSS_EVENT_FB_REGISTERED, fbi);
 
 	if (mfd->mdp.init_fnc) {
@@ -1338,6 +1445,25 @@ static int mdss_fb_probe(struct platform_device *pdev)
 		else
 			lcd_backlight_registered = 1;
 	}
+
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+	if (mfd->index == 0) {
+		u32 tmp;
+		int ret;
+		ret = of_property_read_u32(pdev->dev.of_node,
+					"qcom,default-brightness", &tmp);
+		pr_debug("qcom,default-brightness read result = %d, value = %d\n", ret, tmp);
+		mfd->panel_info->default_brightness = (ret == 0 && tmp != 0)?tmp:mfd->panel_info->brightness_max;
+		pr_info("qcom,default-brightness = %d\n", mfd->panel_info->default_brightness);
+
+		backlight_led.brightness = mfd->panel_info->default_brightness;
+		backlight_led.usr_brightness_req = mfd->panel_info->default_brightness;
+	}
+#endif
+
+#if defined(CONFIG_LGE_DISPLAY_AMBIENT_SUPPORTED)
+	lge_ambient_brightness_register(mfd);
+#endif
 
 	mdss_fb_init_panel_modes(mfd, pdata);
 
@@ -1419,6 +1545,9 @@ static int mdss_fb_remove(struct platform_device *pdev)
 		return -ENODEV;
 
 	mdss_fb_remove_sysfs(mfd);
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+	lge_mdss_fb_remove_sysfs(mfd);
+#endif
 
 	pm_runtime_disable(mfd->fbi->dev);
 
@@ -1439,6 +1568,10 @@ static int mdss_fb_remove(struct platform_device *pdev)
 		lcd_backlight_registered = 0;
 		led_classdev_unregister(&backlight_led);
 	}
+
+#if defined(CONFIG_LGE_DISPLAY_AMBIENT_SUPPORTED)
+	lge_ambient_brightness_unregister();
+#endif
 
 	return 0;
 }
@@ -1703,6 +1836,11 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 	bool ad_bl_notify_needed = false;
 	bool bl_notify_needed = false;
 
+#if defined(CONFIG_LGE_SP_MIRRORING_CTRL_BL)
+	if(lge_is_bl_update_blocked(bkl_lvl))
+		return;
+#endif
+
 	if ((((mdss_fb_is_power_off(mfd) && mfd->dcm_state != DCM_ENTER)
 		|| !mfd->allow_bl_update) && !IS_CALIB_MODE_BL(mfd)) ||
 		mfd->panel_info->cont_splash_enabled) {
@@ -1853,6 +1991,9 @@ static int mdss_fb_blank_blank(struct msm_fb_data_type *mfd,
 
 	cur_power_state = mfd->panel_power_state;
 
+#ifdef CONFIG_LGE_LCD_OFF_DIMMING
+	lge_set_blank_called();
+#endif
 	pr_debug("Transitioning from %d --> %d\n", cur_power_state,
 		req_power_state);
 
@@ -1953,6 +2094,7 @@ static int mdss_fb_blank_unblank(struct msm_fb_data_type *mfd)
 				msecs_to_jiffies(mfd->idle_time));
 	}
 
+#if !defined(CONFIG_LGE_DISPLAY_COMMON)
 	/* Reset the backlight only if the panel was off */
 	if (mdss_panel_is_power_off(cur_power_state)) {
 		mutex_lock(&mfd->bl_lock);
@@ -1979,6 +2121,7 @@ static int mdss_fb_blank_unblank(struct msm_fb_data_type *mfd)
 		}
 		mutex_unlock(&mfd->bl_lock);
 	}
+#endif
 
 error:
 	return ret;
@@ -1998,7 +2141,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	if (mfd->dcm_state == DCM_ENTER)
 		return -EPERM;
 
-	pr_debug("%pS mode:%d\n", __builtin_return_address(0),
+	pr_info("[Display] %pS mode:%d\n", __builtin_return_address(0),
 		blank_mode);
 
 	snprintf(trace_buffer, sizeof(trace_buffer), "fb%d blank %d",
@@ -2028,9 +2171,19 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		}
 	}
 
+#if defined(CONFIG_LGE_INTERVAL_MONITOR)
+	if (FB_BLANK_UNBLANK == blank_mode)
+		lge_interval_panel_power_notify(1);
+	else
+		lge_interval_panel_power_notify(0);
+#endif
+
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
 		pr_debug("unblank called. cur pwr state=%d\n", cur_power_state);
+#if defined(CONFIG_LGE_DISPLAY_AMBIENT_SUPPORTED)
+		mfd->unset_bl_level_ex = U32_MAX;
+#endif
 		ret = mdss_fb_blank_unblank(mfd);
 		break;
 	case BLANK_FLAG_ULP:
@@ -2051,6 +2204,9 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		 * If low power mode is requested when panel is already off,
 		 * then first unblank the panel before entering low power mode
 		 */
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+		mfd->unset_bl_level = U32_MAX;
+#endif
 		if (mdss_fb_is_power_off(mfd) && mfd->mdp.on_fnc) {
 			pr_debug("off --> lp. switch to on first\n");
 			ret = mdss_fb_blank_unblank(mfd);
@@ -2073,7 +2229,12 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	sysfs_notify(&mfd->fbi->dev->kobj, NULL, "show_blank_event");
 
 	ATRACE_END(trace_buffer);
-
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+	if (mfd->recovery && blank_mode == FB_BLANK_UNBLANK) {
+		mfd->recovery= false;
+	}
+#endif
+	pr_err("%s: -\n",__func__);
 	return ret;
 }
 
@@ -3717,6 +3878,11 @@ skip_commit:
 	if (!ret)
 		mdss_fb_update_backlight(mfd);
 
+#if defined(CONFIG_LGE_DISPLAY_AMBIENT_SUPPORTED)
+	if (!ret)
+		mdss_fb_update_backlight_ex(mfd);
+#endif
+
 	if (IS_ERR_VALUE(ret) || !sync_pt_data->flushed) {
 		mdss_fb_release_kickoff(mfd);
 		mdss_fb_signal_timeline(sync_pt_data);
@@ -4931,6 +5097,11 @@ int mdss_fb_do_ioctl(struct fb_info *info, unsigned int cmd,
 	unsigned int dsi_mode = 0;
 	struct mdss_panel_data *pdata = NULL;
 
+#if defined(CONFIG_LGE_BROADCAST_TDMB) || defined(CONFIG_LGE_BROADCAST_ISDBT_JAPAN)
+	int dmb_flag = 0;
+	struct mdp_csc_cfg dmb_csc_cfg;
+#endif /* LGE_BROADCAST */
+
 	if (!info || !info->par)
 		return -EINVAL;
 
@@ -4986,6 +5157,24 @@ int mdss_fb_do_ioctl(struct fb_info *info, unsigned int cmd,
 		ret = mdss_fb_display_commit(info, argp);
 		break;
 
+#if defined(CONFIG_LGE_BROADCAST_TDMB) || defined(CONFIG_LGE_BROADCAST_ISDBT_JAPAN)
+	case MSMFB_DMB_SET_FLAG:
+		ret = copy_from_user(&dmb_flag, argp, sizeof(int));
+		if (ret)
+			return ret;
+		ret = pp_set_dmb_status(dmb_flag);
+		/*pr_debug("[MDP] MSMFB_DMB_SET_FLAG : dmb_flag = %d\n", dmb_flag);*/
+		break;
+
+	case MSMFB_DMB_SET_CSC_MATRIX:
+		ret = copy_from_user(&dmb_csc_cfg, argp, sizeof(dmb_csc_cfg));
+		if (ret)
+			return ret;
+		memcpy(dmb_csc_convert.csc_mv, dmb_csc_cfg.csc_mv, sizeof(dmb_csc_cfg.csc_mv));
+		/*pr_debug("[MDP] MSMFB_DMB_SET_CSC_MATRIX : dmc_csc_cfg.flag = %d\n", dmb_csc_cfg.flags);*/
+		break;
+#endif /* LGE_BROADCAST */
+
 	case MSMFB_LPM_ENABLE:
 		ret = copy_from_user(&dsi_mode, argp, sizeof(dsi_mode));
 		if (ret) {
@@ -5027,6 +5216,35 @@ static int mdss_fb_ioctl(struct fb_info *info, unsigned int cmd,
 
 	return mdss_fb_do_ioctl(info, cmd, arg, file);
 }
+
+#ifdef CONFIG_LGE_VSYNC_SKIP
+struct fb_info *msm_fb_get_pan_fb(void)
+{
+	static int panel_before = 0;
+	int c = 0;
+	for (c = 0; c < fbi_list_index; ++c) {
+		struct msm_fb_data_type *mfd;
+		mfd = (struct msm_fb_data_type *)fbi_list[c]->par;
+
+		if (mfd->panel.type == MIPI_CMD_PANEL) {
+			if (panel_before != MIPI_CMD_PANEL) {
+				panel_before = MIPI_CMD_PANEL;
+				return NULL;
+			}
+			return fbi_list[c];
+		}
+
+		if (mfd->panel.type == MIPI_VIDEO_PANEL) {
+			if (panel_before != MIPI_VIDEO_PANEL) {
+				panel_before = MIPI_VIDEO_PANEL;
+				return NULL;
+			}
+			return fbi_list[c];
+		}
+	}
+	return NULL;
+}
+#endif
 
 static int mdss_fb_register_extra_panel(struct platform_device *pdev,
 	struct mdss_panel_data *pdata)
@@ -5210,7 +5428,18 @@ void mdss_fb_report_panel_dead(struct msm_fb_data_type *mfd)
 		pr_err("Panel data not available\n");
 		return;
 	}
+#if !defined(CONFIG_LGE_PANEL_RECOVERY)
+	return;
+#endif
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+	if (mfd->recovery) {
+		pr_info("[Display] Already in recovery!!\n");
+		return;
+	} else {
+		mfd->recovery = true;
 
+	}
+#endif
 	pdata->panel_info.panel_dead = true;
 	kobject_uevent_env(&mfd->fbi->dev->kobj,
 		KOBJ_CHANGE, envp);

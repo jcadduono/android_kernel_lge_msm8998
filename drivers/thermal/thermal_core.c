@@ -838,8 +838,13 @@ static void handle_critical_trips(struct thermal_zone_device *tz,
 	/* If we have not crossed the trip_temp, we do not care. */
 	if (trip_type != THERMAL_TRIP_CRITICAL_LOW &&
 	    trip_type != THERMAL_TRIP_CONFIGURABLE_LOW) {
+#ifdef CONFIG_LGE_PM
+		if (trip_temp <= 0 || tz->temperature < trip_temp)
+			return;
+#else
 		if (tz->temperature < trip_temp)
 			return;
+#endif
 	} else
 		if (tz->temperature >= trip_temp)
 			return;
@@ -849,9 +854,17 @@ static void handle_critical_trips(struct thermal_zone_device *tz,
 
 	if (trip_type == THERMAL_TRIP_CRITICAL ||
 	    trip_type == THERMAL_TRIP_CRITICAL_LOW) {
+#ifdef CONFIG_LGE_PM
+		dev_emerg(&tz->device, "temp : %d / trip_temp : %d / trip_type = %d\n",
+				tz->temperature, trip_temp, trip_type);
+		dev_emerg(&tz->device,
+			  "critical temperature reached(%d),shutting down\n",
+			  tz->temperature);
+#else
 		dev_emerg(&tz->device,
 			  "critical temperature reached(%d C),shutting down\n",
 			  tz->temperature / 1000);
+#endif
 		orderly_poweroff(true);
 	}
 }

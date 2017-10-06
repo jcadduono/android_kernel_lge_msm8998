@@ -1860,7 +1860,7 @@ void *hdcp_1x_init(struct hdcp_init_data *init_data)
 	static struct hdcp_ops ops = {
 		.isr = hdcp_1x_isr,
 		.cp_irq = hdcp_1x_cp_irq,
-		.reauthenticate = hdcp_1x_reauthenticate,
+		.reauthenticate = NULL,
 		.authenticate = hdcp_1x_authenticate,
 		.off = hdcp_1x_off
 	};

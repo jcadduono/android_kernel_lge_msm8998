@@ -520,6 +520,42 @@ config AXP20X_POWER
 	  This driver provides support for the power supply features of
 	  AXP20x PMIC.
 
+config IDTP9223_CHARGER
+	tristate "IDT P9223 charger driver"
+	default n
+	depends on I2C && GPIOLIB
+	help
+	  Say Y to enable support for the IDT P9223 wireless charger.
+
+config IDTP9223_CHARGER_WPC_ONLY
+	tristate "IDT P9223 charger driver for wpc charging only"
+	default n
+	depends on IDTP9223_CHARGER
+	help
+	  Say Y to enable support for wpc charging only in IDT P9223
+
+config LGE_PM
+	tristate "LGE power management configuration"
+	default y
+	help
+	  support for pm8996 and sub pmic chip lge feature.
+	  Power Management, Battery charging, Battery Monitoring System
+	  with battery FET and fuel gauge.
+
+config LGE_PM_SUPPORT_LG_POWER_CLASS
+	bool "LG power class driver feature"
+	default n
+	depends on LGE_PM
+	help
+	  Support lge power class for charging scenario on LGE
+
+config LGE_PM_BATT_MANAGER
+	tristate "LGE battery management feature"
+	default n
+	depends on LGE_PM
+	help
+	  Lge battery management scenario feature
+
 source "drivers/power/reset/Kconfig"
 source "drivers/power/supply/Kconfig"
 

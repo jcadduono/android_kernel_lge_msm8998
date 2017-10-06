@@ -140,6 +140,11 @@ int msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 	if (s_ctrl->is_secure)
 		msm_camera_tz_i2c_power_down(sensor_i2c_client);
 
+#ifdef CONFIG_MACH_LGE
+	pr_info("%s(%d) %s\n", __func__, __LINE__,
+		s_ctrl->sensordata->sensor_name);
+#endif
+
 	return msm_camera_power_down(power_info, sensor_device_type,
 		sensor_i2c_client);
 }
@@ -213,6 +218,10 @@ int msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 			break;
 		}
 	}
+
+#ifdef CONFIG_MACH_LGE
+	pr_info("%s(%d) %s\n", __func__, __LINE__, sensor_name);
+#endif
 
 	return rc;
 }
@@ -584,7 +593,17 @@ static int msm_sensor_config32(struct msm_sensor_ctrl_t *s_ctrl,
 			pr_err("%s:%d: i2c_read failed\n", __func__, __LINE__);
 			break;
 		}
+#ifndef CONFIG_MACH_LGE
 		read_config_ptr->data = local_data;
+#else
+		read_config.data = local_data;
+		if (copy_to_user(read_config_ptr, &read_config,
+			sizeof(struct msm_camera_i2c_read_config))) {
+			pr_err("%s:%d failed\n", __func__, __LINE__);
+			rc = -EFAULT;
+			break;
+		}
+#endif
 		break;
 	}
 	case CFG_SLAVE_WRITE_I2C_ARRAY: {

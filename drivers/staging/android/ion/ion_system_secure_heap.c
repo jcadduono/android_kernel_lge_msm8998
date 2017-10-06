@@ -143,8 +143,13 @@ static void process_one_prefetch(struct ion_heap *sys_heap,
 	buffer.heap = sys_heap;
 	buffer.flags = 0;
 
+#ifndef CONFIG_MIGRATE_HIGHORDER
 	ret = sys_heap->ops->allocate(sys_heap, &buffer, info->size,
 						PAGE_SIZE, buffer.flags);
+#else
+	ret = sys_heap->ops->allocate(sys_heap, &buffer, info->size,
+						PAGE_SIZE, info->vmid);
+#endif
 	if (ret) {
 		pr_debug("%s: Failed to prefetch 0x%zx, ret = %d\n",
 			 __func__, info->size, ret);

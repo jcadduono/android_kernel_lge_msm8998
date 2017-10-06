@@ -115,7 +115,11 @@ enum {
 #define TCP_CC_INFO		26	/* Get Congestion Control (optional) info */
 #define TCP_SAVE_SYN		27	/* Record SYN headers for new connections */
 #define TCP_SAVED_SYN		28	/* Get SYN headers recorded for connection */
-
+#ifdef CONFIG_LGP_DATA_TCPIP_MPTCP
+#define MPTCP_ENABLED		42
+#define MPTCP_SCHEDULER		43
+#define MPTCP_PATH_MANAGER	44
+#endif
 struct tcp_repair_opt {
 	__u32	opt_code;
 	__u32	opt_val;

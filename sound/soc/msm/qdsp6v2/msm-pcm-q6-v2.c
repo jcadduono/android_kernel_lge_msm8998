@@ -378,7 +378,11 @@ static int msm_pcm_playback_prepare(struct snd_pcm_substream *substream)
 		}
 	} else {
 		ret = q6asm_open_write_v4(prtd->audio_client,
+#ifdef CONFIG_MACH_LGE // 24bit ASM patch
+			fmt_type, 24);
+#else
 			fmt_type, bits_per_sample);
+#endif
 
 		if (ret < 0) {
 			pr_err("%s: q6asm_open_write_v4 failed (%d)\n",

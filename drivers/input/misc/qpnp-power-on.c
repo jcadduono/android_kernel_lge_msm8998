@@ -33,6 +33,10 @@
 #include <linux/input/qpnp-power-on.h>
 #include <linux/power_supply.h>
 
+#ifdef CONFIG_LGE_HANDLE_PANIC
+#include <soc/qcom/lge/lge_handle_panic.h>
+#endif
+
 #define PMIC_VER_8941           0x01
 #define PMIC_VERSION_REG        0x0105
 #define PMIC_VERSION_REV4_REG   0x0103
@@ -217,6 +221,9 @@ struct qpnp_pon {
 	u8			pon_ver;
 	u8			warm_reset_reason1;
 	u8			warm_reset_reason2;
+#ifdef CONFIG_LGE_PM
+	int			pon_pon_off_reason;
+#endif
 	bool			is_spon;
 	bool			store_hard_reset_reason;
 	bool			kpdpwr_dbc_enable;
@@ -297,6 +304,27 @@ static const char * const qpnp_poff_reason[] = {
 	[38] = "Triggered from S3_RESET_PBS_NACK",
 	[39] = "Triggered from S3_RESET_KPDPWR_ANDOR_RESIN (power key and/or reset line)",
 };
+
+#ifdef CONFIG_LGE_HANDLE_PANIC
+static const char * const pon_ps_hold_reset_ctl[] = {
+	[0] = "RESERVED0",
+	[1] = "WARM_RESET",
+	[2] = "IMMEDIATE_XVDD_SHUTDOWN",
+	[3] = "RESERVED3",
+	[4] = "SHUTDOWN",
+	[5] = "DVDD_SHUTDOWN",
+	[6] = "XVDD_SHUTDOWN",
+	[7] = "HARD_RESET",
+	[8] = "DVDD_HARD_RESET",
+	[9] = "XVDD_HARD_RESET",
+	[10] = "WARM_RESET_AND_DVDD_SHUTDOWN",
+	[11] = "WARM_RESET_AND_XVDD_SHUTDOWN",
+	[12] = "WARM_RESET_AND_SHUTDOWN",
+	[13] = "WARM_RESET_THEN_HARD_RESET",
+	[14] = "WARM_RESET_THEN_DVDD_HARD_RESET",
+	[15] = "WARM_RESET_THEN_XVDD_HARD_RESET",
+};
+#endif
 
 static int
 qpnp_pon_masked_write(struct qpnp_pon *pon, u16 addr, u8 mask, u8 val)
@@ -533,7 +561,12 @@ static int qpnp_pon_reset_config(struct qpnp_pon *pon,
 			"Unable to write to addr=%hx, rc(%d)\n",
 			rst_en_reg, rc);
 
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	dev_info(&pon->pdev->dev, "power off type = 0x%02X, %s\n",
+				type, pon_ps_hold_reset_ctl[type]);
+#else
 	dev_dbg(&pon->pdev->dev, "power off type = 0x%02X\n", type);
+#endif
 	return rc;
 }
 
@@ -655,6 +688,16 @@ int qpnp_pon_wd_config(bool enable)
 	return rc;
 }
 EXPORT_SYMBOL(qpnp_pon_wd_config);
+
+#ifdef CONFIG_LGE_PM
+int qpnp_pon_is_off_reason(void)
+{
+	struct qpnp_pon *pon = sys_reset_dev;
+
+	return pon->pon_pon_off_reason;
+}
+EXPORT_SYMBOL(qpnp_pon_is_off_reason);
+#endif
 
 static int qpnp_pon_get_trigger_config(enum pon_trigger_source pon_src,
 							bool *enabled)
@@ -847,6 +890,10 @@ qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 	pr_debug("PMIC input: code=%d, sts=0x%hhx\n",
 					cfg->key_code, pon_rt_sts);
 	key_status = pon_rt_sts & pon_rt_bit;
+#ifdef CONFIG_LGE_PM_DEBUG
+	pr_err("%s: code(%d), value(%d)\n",
+		__func__, cfg->key_code, key_status);
+#endif
 
 	if (pon->kpdpwr_dbc_enable && cfg->pon_type == PON_KPDPWR) {
 		if (!key_status)
@@ -864,6 +911,10 @@ qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 
 	input_report_key(pon->pon_input, cfg->key_code, key_status);
 	input_sync(pon->pon_input);
+
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	lge_gen_key_panic(cfg->key_code, key_status);
+#endif
 
 	cfg->old_state = !!key_status;
 
@@ -2170,6 +2221,10 @@ static int qpnp_pon_probe(struct platform_device *pdev)
 				to_spmi_device(pon->pdev->dev.parent)->usid,
 				qpnp_poff_reason[index]);
 	}
+#ifdef CONFIG_LGE_PM
+	if (to_spmi_device(pon->pdev->dev.parent)->usid == 0)
+		pon->pon_pon_off_reason = index;
+#endif
 
 	if (pon->pon_trigger_reason == PON_SMPL ||
 		pon->pon_power_off_reason == QPNP_POFF_REASON_UVLO) {

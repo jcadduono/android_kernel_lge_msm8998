@@ -1226,6 +1226,9 @@ static void set_class_tag(struct rtable *rt, u32 tag)
 static unsigned int ipv4_default_advmss(const struct dst_entry *dst)
 {
 	unsigned int advmss = dst_metric_raw(dst, RTAX_ADVMSS);
+/* 2016-12-23 hyoseab.song@lge.com LGP_DATA_ENABLE_MODEM_CLAT [START] */
+    const struct rtable *rt = (const struct rtable *) dst;
+/* 2016-12-23 hyoseab.song@lge.com LGP_DATA_ENABLE_MODEM_CLAT [END] */
 
 	if (advmss == 0) {
 		advmss = max_t(unsigned int, dst->dev->mtu - 40,
@@ -1233,6 +1236,14 @@ static unsigned int ipv4_default_advmss(const struct dst_entry *dst)
 		if (advmss > 65535 - 40)
 			advmss = 65535 - 40;
 	}
+
+/* 2016-12-23 hyoseab.song@lge.com LGP_DATA_ENABLE_MODEM_CLAT [START] */
+    if(strncmp(dst->dev->name,"rmnet",strlen("rmnet")) == 0 && (rt->rt_gateway & 0x00FFFFFF) == 0x000000C0) {
+        advmss = max_t(unsigned int, dst->dev->mtu - 28 - 40,
+            ip_rt_min_advmss);
+    }
+/* 2016-12-23 hyoseab.song@lge.com LGP_DATA_ENABLE_MODEM_CLAT [END] */
+
 	return advmss;
 }
 
@@ -1248,6 +1259,12 @@ static unsigned int ipv4_mtu(const struct dst_entry *dst)
 		return mtu;
 
 	mtu = dst->dev->mtu;
+
+/* 2016-12-23 hyoseab.song@lge.com LGP_DATA_ENABLE_MODEM_CLAT [START] */
+    if(strncmp(dst->dev->name,"rmnet",strlen("rmnet")) == 0 && (rt->rt_gateway & 0x00FFFFFF) == 0x000000C0) {
+        mtu = mtu - 28;
+    }
+/* 2016-12-23 hyoseab.song@lge.com LGP_DATA_ENABLE_MODEM_CLAT [END] */
 
 	if (unlikely(dst_metric_locked(dst, RTAX_MTU))) {
 		if (rt->rt_uses_gateway && mtu > 576)
@@ -2313,6 +2330,13 @@ struct rtable *__ip_route_output_key_hash(struct net *net, struct flowi4 *fl4,
 	fib_select_path(net, &res, fl4, mp_hash);
 
 	dev_out = FIB_RES_DEV(res);
+    /* 2012-06-16 jewon.lee@lge.com LGP_DATA_KERNEL_BUGFIX_ROUTE [START] */
+    if (dev_out == NULL) {
+        printk(KERN_DEBUG "dev_out is null\n");
+        rth = ERR_PTR(-ENETUNREACH);
+        goto out;
+    }
+    /* 2012-06-16 jewon.lee@lge.com LGP_DATA_KERNEL_BUGFIX_ROUTE [END] */
 	fl4->flowi4_oif = dev_out->ifindex;
 
 

@@ -27,6 +27,19 @@
 #include "mdss_dba_utils.h"
 #include "mdss_debug.h"
 
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+#include "lge/lge_mdss_display.h"
+#include <soc/qcom/lge/board_lge.h>
+#include "lge/lge_mdss_dsi_panel.h"
+extern int panel_not_connected;
+#endif
+#if defined(CONFIG_LGE_DISPLAY_AMBIENT_SUPPORTED)
+#include "lge/lge_mdss_ambient.h"
+#endif
+#if defined(CONFIG_LGE_DISPLAY_CONTROL)
+#include "lge/lge_display_control.h"
+#endif /* CONFIG_LGE_DISPLAY_CONTROL*/
+
 #define DT_CMD_HDR 6
 #define DEFAULT_MDP_TRANSFER_TIME 14000
 
@@ -160,6 +173,7 @@ int mdss_dsi_panel_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl, char cmd0,
 	return mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
+#ifndef CONFIG_LGE_DISPLAY_VR_MODE
 static void mdss_dsi_panel_apply_settings(struct mdss_dsi_ctrl_pdata *ctrl,
 			struct dsi_panel_cmds *pcmds)
 {
@@ -179,10 +193,14 @@ static void mdss_dsi_panel_apply_settings(struct mdss_dsi_ctrl_pdata *ctrl,
 
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
-
-
+#endif
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
+			struct dsi_panel_cmds *pcmds, u32 flags)
+#else
 static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 			struct dsi_panel_cmds *pcmds, u32 flags)
+#endif
 {
 	struct dcs_cmd_req cmdreq;
 	struct mdss_panel_info *pinfo;
@@ -241,6 +259,11 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_OVERRIDE_MDSS_DSI_PANEL_RESET)
+/*
+ * mdss_dsi_panel_reset(), mdss_dsi_request_gpios() should be defined in other file.
+ */
+#else
 static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	int rc = 0;
@@ -502,6 +525,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 exit:
 	return rc;
 }
+#endif
 
 /**
  * mdss_dsi_roi_merge() -  merge two roi into single roi
@@ -825,6 +849,12 @@ static void mdss_dsi_panel_switch_mode(struct mdss_panel_data *pdata,
 		pcmds = &pt->switch_cmds;
 		flags |= CMD_REQ_DMA_TPG;
 		flags |= CMD_REQ_COMMIT;
+
+#if defined(CONFIG_LGE_DISPLAY_DYNAMIC_RESOLUTION_SWITCH)
+		ctrl_pdata->req_resolution = pcmds->cmds[0].payload[1];
+		queue_delayed_work(ctrl_pdata->drs_workq, &ctrl_pdata->drs_work, 0);
+		return;
+#endif
 	} else {
 		pr_warn("%s: Invalid mode switch attempted\n", __func__);
 		return;
@@ -870,7 +900,7 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 		bl_level = pdata->panel_info.bl_min;
 
 	/* enable the backlight gpio if present */
-	mdss_dsi_bl_gpio_ctrl(pdata, bl_level);
+	//mdss_dsi_bl_gpio_ctrl(pdata, bl_level);
 
 	switch (ctrl_pdata->bklt_ctrl) {
 	case BL_WLED:
@@ -910,6 +940,11 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	}
 }
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_OVERRIDE_MDSS_DSI_PANEL_ON)
+/*
+ * mdss_dsi_panel_on() should be defined in other file.
+ */
+#else
 static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
@@ -958,6 +993,7 @@ end:
 	pr_debug("%s:-\n", __func__);
 	return ret;
 }
+#endif
 
 static int mdss_dsi_post_panel_on(struct mdss_panel_data *pdata)
 {
@@ -998,6 +1034,11 @@ end:
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_OVERRIDE_MDSS_DSI_PANEL_OFF)
+/*
+ * mdss_dsi_panel_off() should be defined in other file.
+ */
+#else
 static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
@@ -1031,12 +1072,16 @@ end:
 	pr_debug("%s:-\n", __func__);
 	return 0;
 }
+#endif
 
 static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 	int enable)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct mdss_panel_info *pinfo;
+#if defined(CONFIG_LGE_DISPLAY_AMBIENT_SUPPORTED)
+	int rc;
+#endif
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -1051,6 +1096,12 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 		enable);
 
 	/* Any panel specific low power commands/config */
+#if defined(CONFIG_LGE_DISPLAY_AMBIENT_SUPPORTED)
+	rc = lge_mdss_ambient_cmd_send(pdata, enable);
+	if (rc) {
+		pr_err("[Ambient] %s: fail to send (rc:%d)\n", __func__, rc);
+	}
+#endif
 
 	pr_debug("%s:-\n", __func__);
 	return 0;
@@ -1117,9 +1168,13 @@ static void mdss_dsi_parse_trigger(struct device_node *np, char *trigger,
 	}
 }
 
-
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+int mdss_dsi_parse_dcs_cmds(struct device_node *np,
+		struct dsi_panel_cmds *pcmds, char *cmd_key, char *link_key)
+#else
 static int mdss_dsi_parse_dcs_cmds(struct device_node *np,
 		struct dsi_panel_cmds *pcmds, char *cmd_key, char *link_key)
+#endif
 {
 	const char *data;
 	int blen = 0, len;
@@ -2452,6 +2507,10 @@ int mdss_dsi_panel_timing_switch(struct mdss_dsi_ctrl_pdata *ctrl,
 		pinfo->mipi.dsi_phy_db.timing_8996[i] = pt->phy_timing_8996[i];
 
 	ctrl->on_cmds = pt->on_cmds;
+#if defined(CONFIG_LGE_ENHANCE_GALLERY_SHARPNESS)
+	ctrl->sharpness_on_cmds = pt->sharpness_on_cmds;
+	ctrl->ce_on_cmds = pt->ce_on_cmds;
+#endif
 	ctrl->post_panel_on_cmds = pt->post_panel_on_cmds;
 
 	ctrl->panel_data.current_timing = timing;
@@ -2595,6 +2654,14 @@ static int  mdss_dsi_panel_config_res_properties(struct device_node *np,
 		"qcom,mdss-dsi-on-command",
 		"qcom,mdss-dsi-on-command-state");
 
+#if defined(CONFIG_LGE_ENHANCE_GALLERY_SHARPNESS)
+	mdss_dsi_parse_dcs_cmds(np, &pt->sharpness_on_cmds,
+		"qcom,mdss-dsi-sharpness-on-command",
+		"qcom,mdss-dsi-common-hs-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &pt->ce_on_cmds,
+		"qcom,mdss-dsi-ce-on-command",
+		"qcom,mdss-dsi-common-hs-command-state");
+#endif
 	mdss_dsi_parse_dcs_cmds(np, &pt->post_panel_on_cmds,
 		"qcom,mdss-dsi-post-panel-on-command", NULL);
 
@@ -2975,6 +3042,43 @@ int mdss_dsi_panel_init(struct device_node *node,
 	} else {
 		pr_info("%s: Panel Name = %s\n", __func__, panel_name);
 		strlcpy(&pinfo->panel_name[0], panel_name, MDSS_MAX_PANEL_LEN);
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+		if (strncmp(panel_name, "SW43402 DV2.x cmd", 17) == 0) {
+			pr_err("[Display] %s: panel_type is LGD_SW43402_CMD_DSC_PANEL(DV2.0)\n",
+					__func__);
+			pinfo->panel_type = LGD_SIW_LG43402_1440_2880_ONCELL_CMD_PANEL;
+		}
+		else if (strncmp(panel_name, "SW43402 DV3.0 cmd", 17) == 0) {
+			pr_err("[Display] %s: panel_type is LGD_SW43402_CMD_DSC_PANEL(DV3.0)\n",
+					__func__);
+			pinfo->panel_type = LGD_SIW_LG43402_1440_2880_ONCELL_CMD_PANEL;
+		}
+		else if (strncmp(panel_name, "SW43402 DV3.1 cmd", 17) == 0) {
+			pr_err("[Display] %s: panel_type is LGD_SW43402_CMD_DSC_PANEL(DV3.1)\n",
+					__func__);
+			pinfo->panel_type = LGD_SIW_LG43402_1440_2880_ONCELL_CMD_PANEL;
+		}
+		else if (strncmp(panel_name, "SW43401 cmd mode", 16) == 0) {
+			pr_err("[Display] %s: panel_type is LGD_SW43401_CMD_DSC_PANEL w/o touch\n",
+					__func__);
+			pinfo->panel_type = LGD_SIW_LG43401_NOTOUCH_CMD_PANEL;
+		}
+		else if (strncmp(panel_name, "SW49407 cmd mode", 16) == 0) {
+			pr_err("[Display] %s: panel_type is LGD_SW49407_CMD_DSC_PANEL\n",
+					__func__);
+			pinfo->panel_type = LGD_SIC_LG49407_1440_2720_INCELL_CMD_PANEL;
+		}
+		else if (strncmp(panel_name, "SW49408 cmd mode", 16) == 0) {
+			pr_err("[Display] %s: panel_type is LGD_SW49408_CMD_DSC_PANEL\n",
+					__func__);
+			pinfo->panel_type = LGD_SIC_LG49408_1440_2880_INCELL_CMD_PANEL;
+		}
+		else
+			pr_err("[Display] %s: panel not found (%s)\n",__func__, panel_name);
+
+		lge_set_panel(pinfo->panel_type);
+#endif
+
 	}
 	rc = mdss_panel_parse_dt(node, ctrl_pdata);
 	if (rc) {
@@ -2985,6 +3089,10 @@ int mdss_dsi_panel_init(struct device_node *node,
 	pinfo->dynamic_switch_pending = false;
 	pinfo->is_lpm_mode = false;
 	pinfo->esd_rdy = false;
+#ifdef CONFIG_LGE_LCD_MFTS_MODE
+	if (lge_get_mfts_mode() || (detect_factory_cable() && panel_not_connected))
+		pinfo->power_ctrl = true;
+#endif
 	pinfo->persist_mode = false;
 
 	ctrl_pdata->on = mdss_dsi_panel_on;
@@ -2995,6 +3103,12 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->panel_data.apply_display_setting =
 			mdss_dsi_panel_apply_display_setting;
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+	rc = lge_mdss_dsi_panel_init(node, ctrl_pdata);
+	if (rc) {
+		pr_err("%s: fail to init lge panel features\n", __func__);
+	}
+#endif
 
 	return 0;
 }

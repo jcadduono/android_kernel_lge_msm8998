@@ -23,6 +23,9 @@
 #include <net/route.h>
 #include <net/tcp_states.h>
 #include <net/xfrm.h>
+#ifdef CONFIG_LGP_DATA_TCPIP_MPTCP
+#include <net/mptcp.h>
+#endif
 #include <net/tcp.h>
 
 #ifdef INET_CSK_DEBUG
@@ -569,8 +572,11 @@ static void reqsk_timer_handler(unsigned long data)
 	int qlen, expire = 0, resend = 0;
 	int max_retries, thresh;
 	u8 defer_accept;
-
+#ifdef CONFIG_LGP_DATA_TCPIP_MPTCP
+	if (sk_state_load(sk_listener) != TCP_LISTEN && !is_meta_sk(sk_listener))
+#else
 	if (sk_state_load(sk_listener) != TCP_LISTEN)
+#endif
 		goto drop;
 
 	max_retries = icsk->icsk_syn_retries ? : sysctl_tcp_synack_retries;
@@ -663,7 +669,13 @@ struct sock *inet_csk_clone_lock(const struct sock *sk,
 				 const struct request_sock *req,
 				 const gfp_t priority)
 {
+#ifdef CONFIG_LGP_DATA_TCPIP_MPTCP
+	struct sock *newsk;
+
+	newsk = sk_clone_lock(sk, priority);
+#else
 	struct sock *newsk = sk_clone_lock(sk, priority);
+#endif
 
 	if (newsk) {
 		struct inet_connection_sock *newicsk = inet_csk(newsk);
@@ -858,6 +870,14 @@ void inet_csk_listen_stop(struct sock *sk)
 	while ((req = reqsk_queue_remove(queue, sk)) != NULL) {
 		struct sock *child = req->sk;
 
+#ifdef CONFIG_LGP_DATA_TCPIP_MPTCP
+		bool mutex_taken = false;
+
+		if (is_meta_sk(child)) {
+			mutex_lock(&tcp_sk(child)->mpcb->mpcb_mutex);
+			mutex_taken = true;
+		}
+#endif
 		local_bh_disable();
 		bh_lock_sock(child);
 		WARN_ON(sock_owned_by_user(child));
@@ -866,6 +886,12 @@ void inet_csk_listen_stop(struct sock *sk)
 		inet_child_forget(sk, req, child);
 		bh_unlock_sock(child);
 		local_bh_enable();
+
+#ifdef CONFIG_LGP_DATA_TCPIP_MPTCP
+		if (mutex_taken)
+			mutex_unlock(&tcp_sk(child)->mpcb->mpcb_mutex);
+#endif
+
 		sock_put(child);
 
 		cond_resched();

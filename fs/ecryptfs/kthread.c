@@ -94,7 +94,7 @@ int __init ecryptfs_init_kthread(void)
 				       "ecryptfs-kthread");
 	if (IS_ERR(ecryptfs_kthread)) {
 		rc = PTR_ERR(ecryptfs_kthread);
-		printk(KERN_ERR "%s: Failed to create kernel thread; rc = [%d]"
+		ecryptfs_printk(KERN_ERR, "%s: Failed to create kernel thread; rc = [%d]"
 		       "\n", __func__, rc);
 	}
 	return rc;
@@ -156,7 +156,7 @@ int ecryptfs_privileged_open(struct file **lower_file,
 	if (ecryptfs_kthread_ctl.flags & ECRYPTFS_KTHREAD_ZOMBIE) {
 		rc = -EIO;
 		mutex_unlock(&ecryptfs_kthread_ctl.mux);
-		printk(KERN_ERR "%s: We are in the middle of shutting down; "
+		ecryptfs_printk(KERN_ERR, "%s: We are in the middle of shutting down; "
 		       "aborting privileged request to open lower file\n",
 			__func__);
 		goto out;

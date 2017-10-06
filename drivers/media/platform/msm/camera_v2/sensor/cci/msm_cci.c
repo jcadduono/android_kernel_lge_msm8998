@@ -32,7 +32,7 @@
 #define CYCLES_PER_MICRO_SEC_DEFAULT 4915
 #define CCI_MAX_DELAY 1000000
 
-#define CCI_TIMEOUT msecs_to_jiffies(100)
+#define CCI_TIMEOUT msecs_to_jiffies(500)
 
 /* TODO move this somewhere else */
 #define MSM_CCI_DRV_NAME "msm_cci"
@@ -66,6 +66,10 @@ static void msm_cci_dump_registers(struct cci_device *cci_dev,
 	uint32_t read_val = 0;
 	uint32_t i = 0;
 	uint32_t reg_offset = 0;
+
+#ifdef CONFIG_MACH_LGE
+	dump_stack();	/* LGE_CHANGE, CST, print out backtrace in case of read/write timeout */
+#endif
 
 	/* CCI Top Registers */
 	CCI_DBG(" **** %s : %d CCI TOP Registers ****\n", __func__, __LINE__);
@@ -166,6 +170,15 @@ static void msm_cci_flush_queue(struct cci_device *cci_dev,
 	enum cci_i2c_master_t master)
 {
 	int32_t rc = 0;
+
+#ifdef CONFIG_MACH_LGE
+	/* LGE_CHANGE, CST, make sure to check cci_state before HALT_REQ*/
+	if (cci_dev->cci_state != CCI_STATE_ENABLED) {
+		pr_err("%s invalid cci state %d\n",
+			__func__, cci_dev->cci_state);
+		return;
+	}
+#endif
 
 	msm_camera_io_w_mb(1 << master, cci_dev->base + CCI_HALT_REQ_ADDR);
 	rc = wait_for_completion_timeout(
@@ -303,6 +316,8 @@ static uint32_t msm_cci_wait(struct cci_device *cci_dev,
 
 		pr_err("%s: %d wait for queue: %d\n",
 			 __func__, __LINE__, queue);
+                  /* LGE, CHANGE, CST, added for further information */
+		msm_cci_dump_registers(cci_dev, master, queue);
 		if (rc == 0)
 			rc = -ETIMEDOUT;
 		msm_cci_flush_queue(cci_dev, master);
@@ -607,7 +622,7 @@ static int32_t msm_cci_data_queue(struct cci_device *cci_dev,
 	uint32_t read_val = 0;
 	uint32_t reg_offset;
 	uint32_t val = 0;
-	uint32_t max_queue_size;
+	uint32_t max_queue_size, queue_size = 0;
 	unsigned long flags;
 
 	if (i2c_cmd == NULL) {
@@ -660,6 +675,11 @@ static int32_t msm_cci_data_queue(struct cci_device *cci_dev,
 
 	max_queue_size = cci_dev->cci_i2c_queue_info[master][queue].
 			max_queue_size;
+
+	if (c_ctrl->cmd == MSM_CCI_I2C_WRITE_SEQ)
+		queue_size = max_queue_size;
+	else
+		queue_size = max_queue_size/2;
 	reg_addr = i2c_cmd->reg_addr;
 
 	if (sync_en == MSM_SYNC_ENABLE && cci_dev->valid_sync &&
@@ -691,7 +711,7 @@ static int32_t msm_cci_data_queue(struct cci_device *cci_dev,
 		CDBG("%s line %d CUR_WORD_CNT_ADDR %d len %d max %d\n",
 			__func__, __LINE__, read_val, len, max_queue_size);
 		/* + 1 - space alocation for Report CMD*/
-		if ((read_val + len + 1) > max_queue_size/2) {
+		if ((read_val + len + 1) > queue_size) {
 			if ((read_val + len + 1) > max_queue_size) {
 				rc = msm_cci_process_full_q(cci_dev,
 					master, queue);
@@ -1650,24 +1670,57 @@ static int32_t msm_cci_config(struct v4l2_subdev *sd,
 	struct msm_camera_cci_ctrl *cci_ctrl)
 {
 	int32_t rc = 0;
+#ifdef CONFIG_MACH_LGE
+	struct cci_device *cci_dev = v4l2_get_subdevdata(sd);
+#endif
+
 	CDBG("%s line %d cmd %d\n", __func__, __LINE__,
 		cci_ctrl->cmd);
 	switch (cci_ctrl->cmd) {
 	case MSM_CCI_INIT:
 		rc = msm_cci_init(sd, cci_ctrl);
+
+#ifdef CONFIG_MACH_LGE
+		/*LGE_CHANGE, CST, check if cci is acquired */
+		if(!rc)
+			cci_ctrl->cci_info->cci_acquired = 1;
 		break;
+#endif
+
 	case MSM_CCI_RELEASE:
+#ifndef CONFIG_MACH_LGE
 		rc = msm_cci_release(sd);
+#else
+		/*LGE_CHANGE_S, CST, check if cci is acquired */
+		if(cci_ctrl->cci_info) {
+			if(cci_ctrl->cci_info->cci_acquired)
+		rc = msm_cci_release(sd);
+			cci_ctrl->cci_info->cci_acquired = 0;
+		}
+		/*LGE_CHANGE_E, CST, check if cci is acquired */
+#endif
 		break;
 	case MSM_CCI_I2C_READ:
+#ifndef CONFIG_MACH_LGE
 		rc = msm_cci_i2c_read_bytes(sd, cci_ctrl);
+#else
+		mutex_lock(&cci_dev->op_lock);
+		rc = msm_cci_i2c_read_bytes(sd, cci_ctrl);
+		mutex_unlock(&cci_dev->op_lock);
+#endif
 		break;
 	case MSM_CCI_I2C_WRITE:
 	case MSM_CCI_I2C_WRITE_SEQ:
 	case MSM_CCI_I2C_WRITE_SYNC:
 	case MSM_CCI_I2C_WRITE_ASYNC:
 	case MSM_CCI_I2C_WRITE_SYNC_BLOCK:
+#ifndef CONFIG_MACH_LGE
 		rc = msm_cci_write(sd, cci_ctrl);
+#else
+		mutex_lock(&cci_dev->op_lock);
+		rc = msm_cci_write(sd, cci_ctrl);
+		mutex_unlock(&cci_dev->op_lock);
+#endif
 		break;
 	case MSM_CCI_GPIO_WRITE:
 		break;
@@ -1822,6 +1875,11 @@ static long msm_cci_subdev_ioctl(struct v4l2_subdev *sd,
 		break;
 	case MSM_SD_SHUTDOWN: {
 		struct msm_camera_cci_ctrl ctrl_cmd;
+
+#ifdef CONFIG_MACH_LGE
+		ctrl_cmd.cci_info = NULL ;		/*LGE_CHANGE, CST, check if cci is acquired */
+#endif
+
 		ctrl_cmd.cmd = MSM_CCI_RELEASE;
 		rc = msm_cci_config(sd, &ctrl_cmd);
 		break;
@@ -1861,6 +1919,9 @@ static void msm_cci_init_cci_params(struct cci_device *new_cci_dev)
 				cci_master_info[i].lock_q[j]);
 		}
 	}
+#ifdef CONFIG_MACH_LGE
+	mutex_init(&new_cci_dev->op_lock);
+#endif
 	return;
 }
 

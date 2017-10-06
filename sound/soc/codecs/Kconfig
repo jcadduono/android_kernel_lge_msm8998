@@ -112,8 +112,11 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_STI_SAS
 	select SND_SOC_TAS2552 if I2C
 	select SND_SOC_TAS5086 if I2C
+	select SND_SOC_ES9218P if I2C
 	select SND_SOC_TAS571X if I2C
+
 	select SND_SOC_TFA9879 if I2C
+	select SND_SOC_TFA9872 if I2C
 	select SND_SOC_TLV320AIC23_I2C if I2C
 	select SND_SOC_TLV320AIC23_SPI if SPI_MASTER
 	select SND_SOC_TLV320AIC26 if SPI_MASTER
@@ -469,6 +472,10 @@ config SND_SOC_ES8328_SPI
 	tristate
 	select SND_SOC_ES8328
 
+config SND_SOC_LGE_ESS_DIGITAL_FILTER
+	bool "DIGITAL FILTER FOR ADVANCED HIFI"
+	default n
+
 config SND_SOC_GTM601
 	tristate 'GTM601 UMTS modem audio codec'
 
@@ -644,6 +651,17 @@ config SND_SOC_STA529
 
 config SND_SOC_STAC9766
 	tristate
+
+config SND_SOC_ES9218P
+	tristate "es9218P Hi-Fi headphones amp"
+	depends on MACH_LGE
+	default n
+
+config SND_SOC_TFA9872
+	tristate "NXP Semiconductors TFA9872 amplifier"
+	depends on I2C
+	help
+	TFA9872 driver
 
 config SND_SOC_STI_SAS
 	tristate "codec Audio support for STI SAS codec"

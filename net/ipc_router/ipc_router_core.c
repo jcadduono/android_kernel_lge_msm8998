@@ -2476,6 +2476,13 @@ static int process_hello_msg(struct msm_ipc_router_xprt_info *xprt_info,
 		return -EINVAL;
 
 	xprt_info->remote_node_id = hdr->src_node_id;
+
+    /* DEBUG CODE: CASE#02867665 */
+    if(!strcmp(xprt_info->xprt->name, "dsps_IPCRTR"))
+    {
+        BUG_ON(hdr->src_node_id != 9);
+    }
+
 	rt_entry = create_routing_table_entry(hdr->src_node_id, xprt_info);
 	if (!rt_entry) {
 		IPC_RTR_ERR("%s: rt_entry allocation failed\n", __func__);

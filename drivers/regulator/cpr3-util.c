@@ -1484,6 +1484,9 @@ int cpr3_adjust_open_loop_voltages(struct cpr3_regulator *vreg)
 {
 	int i, rc, prev_volt, min_volt;
 	int *volt_adjust, *volt_diff;
+#ifdef CONFIG_LGE_CPR_MANAGER
+	s8 margin;
+#endif
 
 	if (!of_find_property(vreg->of_node,
 			"qcom,cpr-open-loop-voltage-adjustment", NULL)) {
@@ -1507,6 +1510,11 @@ int cpr3_adjust_open_loop_voltages(struct cpr3_regulator *vreg)
 		goto done;
 	}
 
+#ifdef CONFIG_LGE_CPR_MANAGER
+	margin = get_lg_cpr_margins(vreg->name);
+	cpr3_info(vreg,"OEM margin is %d \n",margin);
+#endif
+
 	for (i = 0; i < vreg->corner_count; i++) {
 		if (volt_adjust[i]) {
 			prev_volt = vreg->corner[i].open_loop_volt;
@@ -1514,6 +1522,11 @@ int cpr3_adjust_open_loop_voltages(struct cpr3_regulator *vreg)
 			cpr3_debug(vreg, "adjusted corner %d open-loop voltage: %d --> %d uV\n",
 				i, prev_volt, vreg->corner[i].open_loop_volt);
 		}
+#ifdef CONFIG_LGE_CPR_MANAGER
+		vreg->corner[i].open_loop_volt += margin * 1000;
+		vreg->corner[i].floor_volt += margin * 1000;
+		vreg->corner[i].ceiling_volt += margin * 1000;
+#endif
 	}
 
 	if (of_find_property(vreg->of_node,
@@ -1639,6 +1652,9 @@ int cpr3_parse_closed_loop_voltage_adjustments(
 {
 	int i, rc;
 	u32 *ro_all_scale;
+#ifdef CONFIG_LGE_CPR_MANAGER
+	s8 margin;
+#endif
 
 	if (!of_find_property(vreg->of_node,
 			"qcom,cpr-closed-loop-voltage-adjustment", NULL)
@@ -1697,6 +1713,14 @@ int cpr3_parse_closed_loop_voltage_adjustments(
 			goto done;
 		}
 	}
+
+#ifdef CONFIG_LGE_CPR_MANAGER
+	margin = get_lg_cpr_margins(vreg->name);
+	cpr3_info(vreg,"OEM margin is %d \n",margin);
+	for (i = 0; i < vreg->corner_count; i++) {
+		volt_adjust[i] += margin * 1000;
+	}
+#endif
 
 done:
 	kfree(ro_all_scale);
@@ -2335,6 +2359,9 @@ int cpr3_adjust_target_quotients(struct cpr3_regulator *vreg,
 	int i, rc;
 	int *volt_adjust, *ro_scale;
 	bool explicit_adjustment, fused_adjustment, is_increasing;
+#ifdef CONFIG_LGE_CPR_MANAGER
+	s8 margin;
+#endif
 
 	explicit_adjustment = of_find_property(vreg->of_node,
 		"qcom,cpr-closed-loop-voltage-adjustment", NULL);
@@ -2380,6 +2407,14 @@ int cpr3_adjust_target_quotients(struct cpr3_regulator *vreg,
 				rc);
 			goto done;
 		}
+
+#ifdef CONFIG_LGE_CPR_MANAGER
+		margin = get_lg_cpr_margins(vreg->name);
+		cpr3_info(vreg,"OEM margin is %d \n",margin);
+		for (i = 0; i < vreg->corner_count; i++){
+			volt_adjust[i] += margin * 1000;
+		}
+#endif
 
 		_cpr3_adjust_target_quotients(vreg, volt_adjust, ro_scale,
 			"from DT");

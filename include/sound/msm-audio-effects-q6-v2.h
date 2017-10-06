@@ -52,4 +52,7 @@ int msm_audio_effects_volume_handler(struct audio_client *ac,
 int msm_audio_effects_volume_handler_v2(struct audio_client *ac,
 					struct soft_volume_params *vol,
 					long *values, int instance);
+int msm_audio_effects_lgmqa_handler(struct audio_client *ac,
+                    struct lgmqa_params *lgmqa,
+                    long *values);
 #endif /*_MSM_AUDIO_EFFECTS_H*/

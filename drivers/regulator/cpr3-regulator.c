@@ -6513,3 +6513,25 @@ int cpr3_regulator_unregister(struct cpr3_controller *ctrl)
 
 	return 0;
 }
+
+#ifdef CONFIG_LGE_CPR_MANAGER
+struct cpr3_controller* find_cpr3_controller(const char *name)
+{
+	struct cpr3_controller* cntrl = NULL;
+	bool found = false;
+
+	mutex_lock(&cpr3_controller_list_mutex);
+	list_for_each_entry(cntrl, &cpr3_controller_list, list) {
+		if(strcmp(cntrl->name,name) == 0) {
+			found = true;
+			break;
+		}
+	}
+	mutex_unlock(&cpr3_controller_list_mutex);
+	if(found)
+		return cntrl;
+	else
+		return NULL;
+}
+EXPORT_SYMBOL(find_cpr3_controller);
+#endif

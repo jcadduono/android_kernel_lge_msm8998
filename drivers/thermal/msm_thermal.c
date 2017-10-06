@@ -57,6 +57,10 @@
 #define TRACE_MSM_THERMAL
 #include <trace/trace_thermal.h>
 
+#ifdef CONFIG_LGE_HANDLE_PANIC
+#include <soc/qcom/lge/lge_handle_panic.h>
+#endif
+
 #define MSM_LIMITS_DCVSH		0x10
 #define MSM_LIMITS_NODE_DCVS		0x44435653
 #define MSM_LIMITS_SUB_FN_GENERAL	0x47454E00
@@ -148,6 +152,9 @@
 static struct msm_thermal_data msm_thermal_info;
 static struct delayed_work check_temp_work, retry_hotplug_work;
 static bool core_control_enabled;
+#ifdef CONFIG_LGE_PM
+static bool freq_control_enabled;
+#endif
 static uint32_t cpus_offlined;
 static cpumask_var_t cpus_previously_online;
 static DEFINE_MUTEX(core_control_mutex);
@@ -1067,7 +1074,7 @@ static int msm_lmh_dcvs_update(int cpu)
 		pr_err("%s: unknown affinity %d\n", __func__, id);
 		return -EINVAL;
 	};
-
+	pr_err("[TM] LMh DCVS : cluster%d - max %7u, min %7u\n", id, max_freq, min_freq);
 	ret = msm_lmh_dcvs_write(affinity, MSM_LIMITS_SUB_FN_GENERAL,
 					MSM_LIMITS_DOMAIN_MAX, max_freq);
 	if (ret)
@@ -1703,8 +1710,15 @@ static int msm_thermal_lmh_dcvs_init(struct platform_device *pdev)
 
 	/* We are okay if the osm clock is not present in DT */
 	osm_clk = devm_clk_get(&pdev->dev, clk_name);
+#ifdef CONFIG_LGE_PM
+	if (IS_ERR(osm_clk)) {
+		lmh_dcvs_available = false;
+		return ret;
+	}
+#else
 	if (IS_ERR(osm_clk))
 		return ret;
+#endif
 
 	/*
 	 * We actually don't need the clock, we just wanted to make sure
@@ -2857,6 +2871,11 @@ static void msm_thermal_bite(int zone_id, int temp)
 		pr_err("Tsens:%d reached temperature:%d. System reset\n",
 			tsens_id, temp);
 	}
+
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	lge_set_restart_reason(LGE_RB_MAGIC | LGE_ERR_TZ | LGE_ERR_TZ_THERM_SEC_BITE);
+#endif
+
 	/* If it is a secure device ignore triggering the thermal bite. */
 	if (scm_is_secure_device())
 		return;
@@ -3660,6 +3679,12 @@ static int __ref msm_thermal_cpu_callback(struct notifier_block *nfb,
 
 	switch (action & ~CPU_TASKS_FROZEN) {
 	case CPU_UP_PREPARE:
+		/*
+		 * Apply LMH freq cap vote, which was requested when the
+		 * core was offline.
+		 */
+		if (lmh_dcvs_available)
+			msm_lmh_dcvs_update(cpu);
 		if (!cpumask_test_and_set_cpu(cpu, cpus_previously_online))
 			pr_debug("Total prev cores online tracked %u\n",
 				cpumask_weight(cpus_previously_online));
@@ -3918,6 +3943,13 @@ static int freq_mitigation_notify(enum thermal_trip_type type,
 	if (!(msm_thermal_info.freq_mitig_control_mask &
 		BIT(cpu_node->cpu)))
 		return 0;
+
+#ifdef CONFIG_LGE_PM
+	if (!freq_control_enabled) {
+		pr_err("freq mitigation is blocked");
+		return 0;
+	}
+#endif
 
 	switch (type) {
 	case THERMAL_TRIP_CONFIGURABLE_HI:
@@ -5015,6 +5047,39 @@ done_store_cc:
 	return count;
 }
 
+#ifdef CONFIG_LGE_PM
+static ssize_t show_fm_enabled(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", freq_control_enabled);
+}
+
+static ssize_t __ref store_fm_enabled(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	int ret = 0;
+	int val = 0;
+
+	ret = kstrtoint(buf, 10, &val);
+	if (ret) {
+		pr_err("Invalid input %s. err:%d\n", buf, ret);
+		goto done_store_fm;
+	}
+
+	if (freq_control_enabled == !!val)
+		goto done_store_fm;
+
+	freq_control_enabled = !!val;
+	if (freq_control_enabled)
+		pr_info("Freq-mitigation enabled\n");
+	else
+		pr_info("Freq-mitigation disabled\n");
+
+done_store_fm:
+	return count;
+}
+#endif
+
 static ssize_t show_cpus_offlined(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
 {
@@ -5065,11 +5130,19 @@ done_cc:
 static __refdata struct kobj_attribute cc_enabled_attr =
 __ATTR(enabled, 0644, show_cc_enabled, store_cc_enabled);
 
+#ifdef CONFIG_LGE_PM
+static __refdata struct kobj_attribute fm_enabled_attr =
+__ATTR(freq_control_enabled, 0644, show_fm_enabled, store_fm_enabled);
+#endif
+
 static __refdata struct kobj_attribute cpus_offlined_attr =
 __ATTR(cpus_offlined, 0644, show_cpus_offlined, store_cpus_offlined);
 
 static __refdata struct attribute *cc_attrs[] = {
 	&cc_enabled_attr.attr,
+#ifdef CONFIG_LGE_PM
+	&fm_enabled_attr.attr,
+#endif
 	&cpus_offlined_attr.attr,
 	NULL,
 };
@@ -6968,20 +7041,46 @@ static int probe_freq_mitigation(struct device_node *node,
 
 	key = "qcom,limit-temp";
 	ret = of_property_read_u32(node, key, &data->limit_temp_degC);
+#ifdef CONFIG_LGE_PM_THERMAL_SEPARATE_BOOT_FREQ_MITIGATION
+	if (ret)
+		goto PROBE_BOOT_FREQ_EXIT;
+#else
 	if (ret)
 		goto PROBE_FREQ_EXIT;
-
+#endif
 	key = "qcom,temp-hysteresis";
 	ret = of_property_read_u32(node, key, &data->temp_hysteresis_degC);
+#ifdef CONFIG_LGE_PM_THERMAL_SEPARATE_BOOT_FREQ_MITIGATION
+	if (ret)
+		goto PROBE_BOOT_FREQ_EXIT;
+#else
 	if (ret)
 		goto PROBE_FREQ_EXIT;
-
+#endif
 	key = "qcom,freq-step";
 	ret = of_property_read_u32(node, key, &data->bootup_freq_step);
+#ifdef CONFIG_LGE_PM_THERMAL_SEPARATE_BOOT_FREQ_MITIGATION
+	if (ret)
+		goto PROBE_BOOT_FREQ_EXIT;
+#else
 	if (ret)
 		goto PROBE_FREQ_EXIT;
+#endif
 	boot_freq_mitig_enabled = true;
 
+#ifdef CONFIG_LGE_PM_THERMAL_SEPARATE_BOOT_FREQ_MITIGATION
+PROBE_BOOT_FREQ_EXIT:
+	if (ret) {
+		dev_info(&pdev->dev,
+		"%s:Failed reading node=%s, key=%s. err=%d. KTM continues\n",
+			__func__, node->full_name, key, ret);
+		boot_freq_mitig_enabled = false;
+	}
+
+	if (!boot_freq_mitig_enabled)
+		dev_info(&pdev->dev,"boot_freq_mitig_enabled = %d\n",
+				boot_freq_mitig_enabled);
+#endif
 	key = "qcom,freq-mitigation-temp";
 	ret = of_property_read_u32(node, key, &data->freq_mitig_temp_degc);
 	if (ret)
@@ -7003,6 +7102,13 @@ static int probe_freq_mitigation(struct device_node *node,
 		MAX_DEBUGFS_CONFIG_LEN, "cpufreq");
 	mit_config[MSM_LIST_MAX_NR + CPUFREQ_CONFIG].disable_config
 		= thermal_cpu_freq_mit_disable;
+#ifdef CONFIG_LGE_PM
+	freq_control_enabled = 1;
+#endif
+#ifdef CONFIG_LGE_PM
+	lmh_dcvs_available = true;
+#endif
+
 
 PROBE_FREQ_EXIT:
 	if (ret) {
@@ -7011,8 +7117,33 @@ PROBE_FREQ_EXIT:
 			__func__, node->full_name, key, ret);
 		freq_mitigation_enabled = 0;
 	}
+#ifdef CONFIG_LGE_PM_THERMAL_SEPARATE_BOOT_FREQ_MITIGATION
+	if (!freq_mitigation_enabled)
+		dev_info(&pdev->dev,"freq_mitigation_enabled = %d\n",
+				freq_mitigation_enabled);
+#endif
 	return ret;
 }
+
+#ifdef CONFIG_LGE_PM_THERMAL_LOG
+static void thermal_enable_config_read(struct seq_file *m, void *data)
+{
+
+	seq_puts(m, "\n------Mitigation Enable config------\n");
+	seq_printf(m, "therm_reset_enabled : %d\n", therm_reset_enabled);
+	seq_printf(m, "vdd_rstr_enabled : %d\n", vdd_rstr_enabled);
+	seq_printf(m, "cx_phase_ctrl_enabled : %d\n", cx_phase_ctrl_enabled);
+	seq_printf(m, "gfx_warm_phase_ctrl_enabled : %d\n", gfx_warm_phase_ctrl_enabled);
+	seq_printf(m, "gfx_crit_phase_ctrl_enabled : %d\n", gfx_crit_phase_ctrl_enabled);
+	seq_printf(m, "ocr_enabled : %d\n", ocr_enabled);
+	seq_printf(m, "vdd_mx_enabled : %d\n", vdd_mx_enabled);
+	seq_printf(m, "psm_enabled : %d\n", psm_enabled);
+	seq_printf(m, "hotplug_enabled : %d\n", hotplug_enabled);
+	seq_printf(m, "freq_mitigation_enabled : %d\n", freq_mitigation_enabled);
+	seq_printf(m, "boot_freq_mitig_enabled : %d\n", boot_freq_mitig_enabled);
+	seq_printf(m, "core_control_enabled : %d\n", core_control_enabled);
+}
+#endif
 
 static void thermal_boot_config_read(struct seq_file *m, void *data)
 {
@@ -7330,6 +7461,9 @@ static int thermal_config_debugfs_read(struct seq_file *m, void *data)
 	thermal_psm_config_read(m, data);
 	thermal_ocr_config_read(m, data);
 	thermal_phase_ctrl_config_read(m, data);
+#ifdef CONFIG_LGE_PM_THERMAL_LOG
+	thermal_enable_config_read(m, data);
+#endif
 	thermal_cxip_lm_config_read(m, data);
 
 	return 0;

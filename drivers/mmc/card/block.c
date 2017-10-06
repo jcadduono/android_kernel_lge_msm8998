@@ -46,6 +46,12 @@
 #include <linux/mmc/host.h>
 #include <linux/mmc/mmc.h>
 #include <linux/mmc/sd.h>
+#ifdef CONFIG_MACH_LGE
+#include <linux/mmc/slot-gpio.h>
+#endif
+#ifdef CONFIG_MMC_FFU
+#include <linux/mmc/ffu.h>
+#endif
 
 #include <asm/uaccess.h>
 
@@ -1701,8 +1707,13 @@ static int mmc_blk_cmd_recovery(struct mmc_card *card, struct request *req,
 		mmc_retune_recheck(card->host);
 
 		prev_cmd_status_valid = false;
+		#ifdef CONFIG_MACH_LGE
+		pr_err("[LGE][MMC]%s: error %d sending status command, %sing, cd-gpio:%d\n",
+		       req->rq_disk->disk_name, err, retry ? "retry" : "abort", mmc_gpio_get_cd(card->host));
+		#else
 		pr_err("%s: error %d sending status command, %sing\n",
 		       req->rq_disk->disk_name, err, retry ? "retry" : "abort");
+		#endif
 	}
 
 	/* We couldn't get a response from the card.  Give up. */
@@ -2191,6 +2202,14 @@ static int mmc_blk_err_check(struct mmc_card *card,
 	int need_retune = card->host->need_retune;
 	int ecc_err = 0, gen_err = 0;
 
+#ifdef CONFIG_MACH_LGE
+	/* LGE_CHANGE, 2015-09-23, H1-BSP-FS@lge.com
+	 * When uSD is not inserted, return proper error-value.
+	 */
+	if(mmc_card_sd(card) && !mmc_gpio_get_cd(card->host)) {
+		return MMC_BLK_NOMEDIUM;
+	}
+#endif
 	if (card->host->sdr104_wa && mmc_card_sd(card) &&
 	    (card->host->ios.timing == MMC_TIMING_UHS_SDR104) &&
 	    !card->sdr104_blocked &&
@@ -4027,6 +4046,10 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 		/* claim host only for the first request */
 		mmc_get_card(card);
 
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	if (mmc_bus_needs_resume(card->host))
+		mmc_resume_bus(card->host);
+#endif
 		if (mmc_card_doing_bkops(host->card)) {
 			ret = mmc_stop_bkops(host->card);
 			if (ret)
@@ -4623,6 +4646,10 @@ static int mmc_blk_probe(struct mmc_card *card)
 
 	dev_set_drvdata(&card->dev, md);
 
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	mmc_set_bus_resume_policy(card->host, 1);
+#endif
+
 	if (mmc_add_disk(md))
 		goto out;
 
@@ -4666,6 +4693,9 @@ static void mmc_blk_remove(struct mmc_card *card)
 	pm_runtime_put_noidle(&card->dev);
 	mmc_blk_remove_req(md);
 	dev_set_drvdata(&card->dev, NULL);
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	mmc_set_bus_resume_policy(card->host, 0);
+#endif
 }
 
 static int _mmc_blk_suspend(struct mmc_card *card, bool wait)

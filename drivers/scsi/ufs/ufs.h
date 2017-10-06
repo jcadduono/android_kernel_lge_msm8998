@@ -154,8 +154,13 @@ enum ufs_desc_max_size {
 	 * of descriptor header.
 	 */
 	QUERY_DESC_STRING_MAX_SIZE		= 0xFE,
+#ifdef CONFIG_MACH_LGE
+	QUERY_DESC_GEOMETRY_MAZ_SIZE		= 0x48,
+#else
 	QUERY_DESC_GEOMETRY_MAZ_SIZE		= 0x44,
+#endif
 	QUERY_DESC_POWER_MAX_SIZE		= 0x62,
+	QUERY_DESC_DEVICE_HEALTH_MAX_SIZE	= 0x25,
 	QUERY_DESC_RFU_MAX_SIZE			= 0x00,
 };
 

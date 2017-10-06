@@ -1,4 +1,4 @@
-/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -348,7 +348,13 @@ static int drawobj_add_sync_fence(struct kgsl_device *device,
 	struct kgsl_cmd_syncpoint_fence *sync = priv;
 	struct kgsl_drawobj *drawobj = DRAWOBJ(syncobj);
 	struct kgsl_drawobj_sync_event *event;
+	struct sync_fence *fence = NULL;
 	unsigned int id;
+
+		fence = sync_fence_fdget(sync->fd);
+		if (fence == NULL)
+		return -EINVAL;
+
 
 	kref_get(&drawobj->refcount);
 
@@ -377,15 +383,21 @@ static int drawobj_add_sync_fence(struct kgsl_device *device,
 
 		/*
 		 * If ret == 0 the fence was already signaled - print a trace
-		 * message so we can track that
+		* message so we can track that. Also add trace for fence add
+		* to avoid confusion that there is a fence expire without
+		* fence add.
 		 */
-		if (ret == 0)
+		if (ret == 0){
+			trace_syncpoint_fence(syncobj, fence->name);
 			trace_syncpoint_fence_expire(syncobj, "signaled");
+		}
+		sync_fence_put(fence);
 
 		return ret;
 	}
 
-	trace_syncpoint_fence(syncobj, event->handle->name);
+	trace_syncpoint_fence(syncobj, fence->name);
+	sync_fence_put(fence);
 
 	return 0;
 }

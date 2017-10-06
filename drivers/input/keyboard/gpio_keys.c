@@ -35,6 +35,17 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/syscore_ops.h>
 
+#ifdef CONFIG_LGE_HANDLE_PANIC
+#include <soc/qcom/lge/lge_handle_panic.h>
+#endif
+
+#if defined(CONFIG_LGE_HALL_IC)
+#include <linux/switch.h>
+struct switch_dev hallic_sdev = {
+       .name = "smartcover",
+};
+#endif
+
 struct gpio_button_data {
 	const struct gpio_keys_button *button;
 	struct input_dev *input;
@@ -363,6 +374,19 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 			input_event(input, type, button->code, button->value);
 	} else {
 		input_event(input, type, button->code, !!state);
+
+#ifdef CONFIG_LGE_HANDLE_PANIC
+		lge_gen_key_panic(button->code, state);
+#endif
+
+#if defined(CONFIG_LGE_HALL_IC)
+    if (!strncmp(bdata->button->desc, "hall_ic", 7)){
+        if (hallic_sdev.state != state){
+            switch_set_state(&hallic_sdev, state);
+            pr_err("hall_ic state switched to %d \n", state);
+            }
+        }
+#endif
 	}
 	input_sync(input);
 }
@@ -488,6 +512,15 @@ static int gpio_keys_setup_key(struct platform_device *pdev,
 				bdata->software_debounce =
 						button->debounce_interval;
 		}
+#if defined(CONFIG_LGE_HALL_IC)
+        if (!strncmp(bdata->button->desc, "hall_ic", 7)){
+            if (switch_dev_register(&hallic_sdev) < 0) {
+               pr_err("hallic_dev switch registration failed\n");
+               switch_dev_unregister(&hallic_sdev);
+            }
+            pr_err("hallic_dev switch registration success\n");
+        }
+#endif
 
 		if (button->irq) {
 			bdata->irq = button->irq;

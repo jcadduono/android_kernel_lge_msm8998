@@ -197,5 +197,11 @@ config SYSCON_REBOOT_MODE
 	  register, then the bootloader can read it to take different
 	  action according to the mode.
 
+config LGE_PM_SHIP_MODE
+	bool "Support ship mode"
+	depends on LGE_PM
+	help
+	  Say Y here to enable ship mode.
+
 endif
 

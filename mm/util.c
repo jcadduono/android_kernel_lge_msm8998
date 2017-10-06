@@ -344,7 +344,7 @@ struct address_space *page_mapping(struct page *page)
 	}
 
 	mapping = (unsigned long)page->mapping;
-	if ((unsigned long)mapping & PAGE_MAPPING_ANON)
+	if (mapping & PAGE_MAPPING_ANON)
 		return NULL;
 
 	return (void *)((unsigned long)mapping & ~PAGE_MAPPING_FLAGS);

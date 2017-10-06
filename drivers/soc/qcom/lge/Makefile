@@ -1,0 +1,15 @@
+obj-$(CONFIG_LGE_HANDLE_PANIC) += lge_handle_panic.o
+obj-$(CONFIG_MACH_LGE) += devices_lge.o
+obj-$(CONFIG_MACH_LGE) += lge_gpio_debug.o
+obj-$(CONFIG_MACH_LGE) += lge_monitor_thermal.o
+obj-$(CONFIG_LGE_BOOTLOADER_LOG) += lge_bootloader_log.o
+obj-$(CONFIG_LGE_BOOTLOADER_TIME_CHECKER) += lge_bootloader_time_checker.o
+obj-$(CONFIG_PRE_SELF_DIAGNOSIS) += lge_pre_selfd.o
+obj-$(CONFIG_LGE_PM_CHARGING_SCENARIO) += lge_charging_scenario.o
+obj-$(CONFIG_LGE_PM_UNIFIED_NODE) += lge_power_sysfs.o
+obj-$(CONFIG_LGE_PM_SMPL_COUNTER) += lge_smpl_count.o
+obj-$(CONFIG_LGE_PM_SUPPORT_LG_POWER_CLASS) += power/
+obj-$(CONFIG_LGE_QSDL_SUPPORT) += lge_qsdl.o
+obj-$(CONFIG_LGE_QFPROM_INTERFACE) += lge_qfprom_access.o
+obj-$(CONFIG_LGE_PKM) += lge_pkm_drv.o
+obj-$(CONFIG_LGE_PM_TIME_TO_FULL) += lge_time_to_full.o

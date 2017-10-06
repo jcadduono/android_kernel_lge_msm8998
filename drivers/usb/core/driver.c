@@ -970,7 +970,7 @@ int usb_register_driver(struct usb_driver *new_driver, struct module *owner,
 	if (retval)
 		goto out_newid;
 
-	pr_info("%s: registered new interface driver %s\n",
+	pr_debug("%s: registered new interface driver %s\n",
 			usbcore_name, new_driver->name);
 
 out:

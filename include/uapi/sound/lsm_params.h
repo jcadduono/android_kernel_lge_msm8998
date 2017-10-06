@@ -34,6 +34,19 @@
 #define LSM_EVENT_NON_TIME_STAMP_MODE (0)
 #define LSM_EVENT_TIME_STAMP_MODE (1)
 
+#define LSM_ENDPOINT_DETECT_THRESHOLD (0)
+#define LSM_OPERATION_MODE (1)
+#define LSM_GAIN (2)
+#define LSM_MIN_CONFIDENCE_LEVELS (3)
+#define LSM_REG_SND_MODEL (4)
+#define LSM_DEREG_SND_MODEL (5)
+#define LSM_CUSTOM_PARAMS (6)
+#define LSM_POLLING_ENABLE (7)
+#define LSM_PARAMS_MAX (LSM_POLLING_ENABLE + 1)
+
+#define LSM_EVENT_NON_TIME_STAMP_MODE (0)
+#define LSM_EVENT_TIME_STAMP_MODE (1)
+
 enum lsm_app_id {
 	LSM_VOICE_WAKEUP_APP_ID = 1,
 	LSM_VOICE_WAKEUP_APP_ID_V2 = 2,
@@ -95,6 +108,7 @@ struct snd_lsm_sound_model_v2 {
 	enum lsm_detection_mode detection_mode;
 	__u8 num_confidence_levels;
 	bool detect_failure;
+	bool poll_enable;
 };
 
 struct snd_lsm_session_data {

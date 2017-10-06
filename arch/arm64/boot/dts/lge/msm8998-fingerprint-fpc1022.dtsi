@@ -1,0 +1,207 @@
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+/{
+	aliases {
+		spi9 = &spi_9;
+	};
+/*
+	reserved-memory {
+		removed_regions: removed_regions@85800000 {
+			reg = <0 0x85800000 0 0x2800000>;
+		};
+	};*/
+};
+
+&soc {
+/*	qcom_seecom: qseecom@86600000 {
+		reg = <0x86600000 0x1A00000>;
+	};
+*/
+	/* PIN CONTROL for FPC */
+	tlmm: pinctrl@03400000 {
+		fpc_spi_active {
+			fpc_spi_active: active {
+				mux {
+					pins = "gpio49", "gpio50",
+							"gpio51", "gpio52";
+					function = "blsp_spi9";
+				};
+
+				config {
+					pins = "gpio49", "gpio50",
+							"gpio51", "gpio52";
+					drive-strength = <6>;
+					bias-disable;
+				};
+			};
+		};
+
+		fpc_cs_manual {
+			fpc_cs_low: output-low {
+				mux {
+					pins = "gpio51";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio51";
+					bias-disable;
+					drive_strength = <2>;
+					ouput-low;
+				};
+			};
+			fpc_cs_high: output-high {
+				mux {
+					pins = "gpio51";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio51";
+					bias-disable;
+					drive_strength = <2>;
+					ouput-high;
+				};
+			};
+		};
+
+		fpc_cs_active {
+			fpc_cs_active: spi-active {
+				mux {
+					pins = "gpio51";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio51";
+					bias-disable;
+					drive_strength = <2>;
+				};
+			};
+		};
+
+		fpc_reset {
+			fpc_reset_reset: reset {
+				mux {
+					pins = "gpio27";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio27";
+					bias-disable;
+					drive_strength = <2>;
+					output-low;
+				};
+			};
+			fpc_reset_active: active {
+				mux {
+					pins = "gpio27";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio27";
+					bias-disable;
+					drive_strength = <2>;
+					output-high;
+				};
+			};
+		};
+
+		fpc_irq_active {
+			fpc_irq_active: active {
+				mux {
+					pins = "gpio121";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio121";
+					bias-pull-down;
+					drive_strength = <2>;
+				};
+			};
+		};
+
+	};
+
+	spi_9: spi@c1b7000 { /* BLSP2 QUP3 */
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0xC1B7000 0x600>,
+		      <0xC184000 0x25000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 103 0>, <0 239 0>;
+		spi-max-frequency = <50000000>;
+		qcom,use-bam;
+		qcom,ver-reg-exists;
+		qcom,bam-consumer-pipe-index = <10>;
+		qcom,bam-producer-pipe-index = <11>;
+		qcom,master-id = <84>;
+		qcom,use-pinctrl;
+		pinctrl-names = "spi_default", "spi_sleep";
+		pinctrl-0 = <&spi_9_active>;
+		pinctrl-1 = <&spi_9_sleep>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp2_qup3_spi_apps_clk>;
+		status = "ok";
+	};
+};
+
+&spi_9 {
+
+	fpc1020@0 {
+		status = "ok";
+		reg = <0>;
+		compatible = "fpc,fpc1020";
+		input-device-name = "fpc1020";
+		interrupt-parent = <&tlmm>;
+		interrupts = <121>;
+		fpc,gpio_cs0	= <&tlmm 51 0>;
+		/*fpc,gpio_cs1	  = <&tlmm 51 0>;*/
+		fpc,gpio_rst	= <&tlmm 27 0>;
+		fpc,gpio_irq	= <&tlmm 121 0>;
+
+		vdd_io-supply	= <&pm8998_lvs2>;
+		fpc,use_fpc2050 = <1>;
+		fpc,enable-on-boot;
+		fpc,enable-wakeup;
+		/* EV_MSC, MSC_SCAN */
+		fpc,event-type = <4>;
+		fpc,event-code = <4>;
+		spi-max-frequency = <4800000>;
+		spi-qup-id = <8>; /* no use */
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			<&clock_gcc clk_gcc_blsp2_qup3_spi_apps_clk>;
+
+		pinctrl-names = "fpc1020_spi_active",
+					"fpc1020_reset_reset",
+					"fpc1020_reset_active",
+					"fpc1020_cs_low",
+					"fpc1020_cs_high",
+					"fpc1020_cs_active",
+					"fpc1020_irq_active";
+
+		pinctrl-0 = <&fpc_spi_active>;
+		pinctrl-1 = <&fpc_reset_reset>;
+		pinctrl-2 = <&fpc_reset_active>;
+		pinctrl-3 = <&fpc_cs_low>;
+		pinctrl-4 = <&fpc_cs_high>;
+		pinctrl-5 = <&fpc_cs_active>;
+		pinctrl-6 = <&fpc_irq_active>;
+	};
+};

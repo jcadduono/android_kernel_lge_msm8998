@@ -632,6 +632,8 @@
 		cell-index = <0>;
 		compatible = "qcom,hdmi-tx";
 
+		status = "disabled";
+
 		reg =	<0xc9a0000 0x50c>,
 			<0x780000 0x621c>,
 			<0xc9e0000 0x28>;

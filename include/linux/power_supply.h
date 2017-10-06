@@ -235,7 +235,53 @@ enum power_supply_property {
 	POWER_SUPPLY_PROP_PD_USB_SUSPEND_SUPPORTED,
 	POWER_SUPPLY_PROP_CHARGER_TEMP,
 	POWER_SUPPLY_PROP_CHARGER_TEMP_MAX,
+#ifdef CONFIG_LGE_PM_INOV_GEN3_SYSFS_SUPPORT
+	POWER_SUPPLY_PROP_CHARGER_TEMP_HOT_MAX,
+	POWER_SUPPLY_PROP_SKIN_TEMP,
+	POWER_SUPPLY_PROP_SKIN_TEMP_MAX,
+	POWER_SUPPLY_PROP_SKIN_TEMP_HOT_MAX,
+#endif
 	POWER_SUPPLY_PROP_PARALLEL_DISABLE,
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_PARALLEL_CONTROLLER
+	POWER_SUPPLY_PROP_FCC_MAX,
+#endif
+#ifdef CONFIG_LGE_PM
+	POWER_SUPPLY_PROP_STATUS_RAW,
+	POWER_SUPPLY_PROP_STATUS_PARALLEL,
+	POWER_SUPPLY_PROP_FASTCHG,
+	POWER_SUPPLY_PROP_INCOMPATIBLE_CHG,
+	POWER_SUPPLY_PROP_PARALLEL_BATFET_EN,
+	POWER_SUPPLY_PROP_RAW_CAPACITY,
+#endif
+#ifdef CONFIG_LGE_PM_FG_AGE
+	POWER_SUPPLY_PROP_BATTERY_CONDITION,
+#endif
+#ifdef CONFIG_IDTP9223_CHARGER
+	POWER_SUPPLY_PROP_QIPMA_ON,
+#endif
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_VZW_REQ
+	POWER_SUPPLY_PROP_VZW_CHG,
+	POWER_SUPPLY_PROP_ICL_CHANGE,
+#endif
+#ifdef CONFIG_LGE_PM_CHARGERLOGO_WAIT_FOR_FG_INIT
+	POWER_SUPPLY_PROP_FIRST_SOC_EST_DONE,
+#endif
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+	POWER_SUPPLY_PROP_LGE_CYCLE_ENABLE,
+	POWER_SUPPLY_PROP_BATTERY_CYCLE,
+	POWER_SUPPLY_PROP_VOLTAGE_CBC,
+#endif
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
+	POWER_SUPPLY_PROP_MOISTURE_DETECTION,
+	POWER_SUPPLY_PROP_TYPEC_CC_DISABLE,
+#endif
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+	POWER_SUPPLY_PROP_TIME_TO_FULL_CAPACITY,
+	POWER_SUPPLY_PROP_AICL_DONE,
+#endif
+#ifdef CONFIG_LGE_PM_STEP_CHARGING
+	POWER_SUPPLY_PROP_LGE_STEP_CHARGING_ENABLE,
+#endif
 	POWER_SUPPLY_PROP_PE_START,
 	POWER_SUPPLY_PROP_SET_SHIP_MODE,
 	POWER_SUPPLY_PROP_SOC_REPORTING_READY,
@@ -278,6 +324,9 @@ enum power_supply_type {
 	POWER_SUPPLY_TYPE_TYPEC,	/* Type-C */
 	POWER_SUPPLY_TYPE_UFP,		/* Type-C UFP */
 	POWER_SUPPLY_TYPE_DFP,		/* TYpe-C DFP */
+#ifdef CONFIG_LGE_PM
+	POWER_SUPPLY_TYPE_USB_FLOATED,	/* floated charger */
+#endif
 };
 
 /* Indicates USB Type-C CC connection status */
@@ -362,7 +411,9 @@ struct power_supply_desc {
 				     enum power_supply_property psp);
 	void (*external_power_changed)(struct power_supply *psy);
 	void (*set_charged)(struct power_supply *psy);
-
+#ifdef CONFIG_LGE_PM_LGE_POWER_CORE
+	void (*external_lge_power_changed)(struct power_supply *psy);
+#endif
 	/*
 	 * Set if thermal zone should not be created for this power supply.
 	 * For example for virtual supplies forwarding calls to actual
@@ -409,6 +460,14 @@ struct power_supply {
 	char *online_trig_name;
 	struct led_trigger *charging_blink_full_solid_trig;
 	char *charging_blink_full_solid_trig_name;
+#endif
+#ifdef CONFIG_LGE_PM_LGE_POWER_CORE
+	char **lge_power_supplied_to;
+	size_t num_lge_power_supplicants;
+	char **lge_power_supplied_from;
+	size_t num_lge_power_supplies;
+	char **lge_psy_power_supplied_from;
+	size_t num_lge_psy_power_supplies;
 #endif
 };
 

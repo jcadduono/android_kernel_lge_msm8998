@@ -57,7 +57,11 @@
 #define C0_G_Y		0	/* G/luma */
 
 /* wait for at most 2 vsync for lowest refresh rate (24hz) */
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+#define KOFF_TIMEOUT_MS 1000
+#else
 #define KOFF_TIMEOUT_MS 84
+#endif
 #define KOFF_TIMEOUT msecs_to_jiffies(KOFF_TIMEOUT_MS)
 
 #define OVERFETCH_DISABLE_TOP		BIT(0)
@@ -2039,4 +2043,9 @@ void mdss_mdp_free_layer_pp_info(struct mdp_input_layer *layer)
 }
 
 #endif /* CONFIG_FB_MSM_MDP_NONE */
+
+#ifdef CONFIG_LGE_VSYNC_SKIP
+int mdss_mdp_leave_extra_cnt(int cnt);
+#endif
+
 #endif /* MDSS_MDP_H */

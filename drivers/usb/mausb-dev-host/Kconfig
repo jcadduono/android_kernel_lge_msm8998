@@ -1,0 +1,42 @@
+config USB_MAUSB
+	tristate "MAUSB support"
+	depends on USB && NET
+	default N
+	---help---
+	  This enables pushing USB packets over IP to allow remote
+	  machines direct access to USB devices. It provides the
+	  MAUSB core that is required by both drivers.
+
+	  To compile this as a module, choose M here: the module will
+	  be called mausb-core.
+
+	  If unsure, say N.
+
+config USB_MAUSB_DEVICE
+	tristate "Device driver"
+	depends on USB_MAUSB
+	default N
+	---help---
+	  This enables the MAUSB Device driver, which is run on the
+	  machine that is sharing the USB devices.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called mausb_device.
+
+config USB_MAUSB_HCD
+	tristate "Virtual HCD"
+	depends on USB_MAUSB
+	default N
+	---help---
+	  This enables the MAUSB virtual host controller driver,
+	  which is run on the remote machine
+
+	  To compile this as a module, choose M here: the module will
+	  be called mausb-hcd.
+
+config USB_MAUSB_DEBUG
+	bool "Debug messages"
+	depends on USB_MAUSB
+	default N
+	---help---
+	  This enables the debug messages from the MAUSB drivers.

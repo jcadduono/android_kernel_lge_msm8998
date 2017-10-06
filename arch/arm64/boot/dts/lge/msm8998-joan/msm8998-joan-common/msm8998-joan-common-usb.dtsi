@@ -1,0 +1,31 @@
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&pmi8998_pdphy {
+	lge,sbu-sel-gpio = <&tlmm 11 0>;
+	lge,sbu-oe-gpio = <&tlmm 16 0>;
+	lge,edge-sel-gpio = <&tlmm 42 0>;
+	qcom,moisture-detection-adc_tm = <&pm8998_adc_tm>;
+	qcom,moisture-detection-vadc= <&pm8998_vadc>;
+};
+
+&qusb_phy0 {
+	/* Sequence of parameters :
+	   - IMP_CTRL1, TUNE1, TUNE2, TUNE4  */
+	qcom,qusb-phy-tune = <0x8c 0xff 0x0c 0x04>;
+	qcom,qusb-phy-tune-host = <0x8c 0x05 0x0c 0x05>;
+};
+
+&ssphy {
+	qcom,tx-a-pre-emphasis = <0x15>;
+	qcom,tx-b-pre-emphasis = <0x15>;
+};

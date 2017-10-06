@@ -51,14 +51,10 @@
 #include <crypto/ice.h>
 
 #include <linux/pfk.h>
-#include <linux/ecryptfs.h>
-
 #include "pfk_kc.h"
 #include "objsec.h"
-#include "ecryptfs_kernel.h"
 #include "pfk_ice.h"
 #include "pfk_ext4.h"
-#include "pfk_ecryptfs.h"
 #include "pfk_internal.h"
 #include "ext4.h"
 
@@ -83,12 +79,10 @@ typedef bool (*pfk_allow_merge_bio_type)(const struct bio *bio1,
 	const struct inode *inode2);
 
 static const pfk_parse_inode_type pfk_parse_inode_ftable[] = {
-	/* ECRYPTFS_PFE */   &pfk_ecryptfs_parse_inode,
 	/* EXT4_CRYPT_PFE */ &pfk_ext4_parse_inode,
 };
 
 static const pfk_allow_merge_bio_type pfk_allow_merge_bio_ftable[] = {
-	/* ECRYPTFS_PFE */   &pfk_ecryptfs_allow_merge_bio,
 	/* EXT4_CRYPT_PFE */ &pfk_ext4_allow_merge_bio,
 };
 
@@ -96,7 +90,6 @@ static void __exit pfk_exit(void)
 {
 	pfk_ready = false;
 	pfk_ext4_deinit();
-	pfk_ecryptfs_deinit();
 	pfk_kc_deinit();
 }
 
@@ -105,13 +98,8 @@ static int __init pfk_init(void)
 
 	int ret = 0;
 
-	ret = pfk_ecryptfs_init();
-	if (ret != 0)
-		goto fail;
-
 	ret = pfk_ext4_init();
 	if (ret != 0) {
-		pfk_ecryptfs_deinit();
 		goto fail;
 	}
 
@@ -119,7 +107,6 @@ static int __init pfk_init(void)
 	if (ret != 0) {
 		pr_err("could init pfk key cache, error %d\n", ret);
 		pfk_ext4_deinit();
-		pfk_ecryptfs_deinit();
 		goto fail;
 	}
 
@@ -141,9 +128,6 @@ static enum pfe_type pfk_get_pfe_type(const struct inode *inode)
 {
 	if (!inode)
 		return INVALID_PFE;
-
-	if (pfk_is_ecryptfs_type(inode))
-		return ECRYPTFS_PFE;
 
 	if (pfk_is_ext4_type(inode))
 		return EXT4_CRYPT_PFE;

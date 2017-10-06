@@ -13,6 +13,14 @@
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/spmi/spmi.h>
 
+/{
+    mtp_batterydata: qcom,battery-data {
+        qcom,batt-id-range-pct = <15>;
+        #include "bringup-qdm-2260mah.dtsi"
+        #include "fg-gen3-batterydata-ascent-3450mah.dtsi"
+    };
+};
+
 &spmi_bus {
 	qcom,pmi8998@2 {
 		compatible = "qcom,spmi-pmic";
@@ -342,6 +350,7 @@
 			qcom,fg-esr-timer-charging = <0 96>;
 			qcom,cycle-counter-en;
 			status = "okay";
+			qcom,battery-data = <&mtp_batterydata>;
 
 			qcom,fg-batt-soc@4000 {
 				status = "okay";

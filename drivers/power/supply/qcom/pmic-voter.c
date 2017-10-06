@@ -77,11 +77,20 @@ static void vote_set_any(struct votable *votable, int client_id,
 	int i;
 
 	*eff_res = 0;
+#ifdef CONFIG_LGE_PM
+	*eff_id = client_id;
 
+	for (i = 0; i < votable->num_clients && votable->client_strs[i]; i++) {
+		*eff_res |= votable->votes[i].enabled;
+		if (votable->votes[i].enabled)
+			*eff_id = i;
+	}
+#else
 	for (i = 0; i < votable->num_clients && votable->client_strs[i]; i++)
 		*eff_res |= votable->votes[i].enabled;
 
 	*eff_id = client_id;
+#endif
 }
 
 /**
@@ -428,6 +437,11 @@ int vote(struct votable *votable, const char *client_str, bool enabled, int val)
 					effective_result,
 					get_client_str(votable, effective_id));
 	}
+#ifdef CONFIG_LGE_PM
+	else if (effective_id != votable->effective_client_id) {
+		votable->effective_client_id = effective_id;
+	}
+#endif
 
 	votable->voted_on = true;
 out:

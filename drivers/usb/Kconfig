@@ -74,6 +74,14 @@ config USB
 	  To compile this driver as a module, choose M here: the
 	  module will be called usbcore.
 
+config USB_HOST_NOTIFY
+        boolean "USB notify layer"
+        depends on USB
+        ---help---
+          Added usb notify layer on gadget,host,otg drivers.
+          The usb notify layer controls otg mode and vbus draw
+          and vbus detect irq.
+
 if USB
 
 source "drivers/usb/core/Kconfig"
@@ -153,6 +161,12 @@ source "drivers/usb/phy/Kconfig"
 
 source "drivers/usb/gadget/Kconfig"
 
+config USB_MAUSB
+       tristate "MA USB driver"
+       help
+         Media Agnostic (MA) USB specification to allow Wi-Fi
+         devices communicate over USB.
+
 config USB_LED_TRIG
 	bool "USB LED Triggers"
 	depends on LEDS_CLASS && USB_COMMON && LEDS_TRIGGERS
@@ -164,3 +178,5 @@ config USB_LED_TRIG
 	  gadget.
 
 endif # USB_SUPPORT
+
+source "drivers/usb/Kconfig.lge"

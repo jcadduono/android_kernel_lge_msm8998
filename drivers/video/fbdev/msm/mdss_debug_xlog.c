@@ -25,13 +25,31 @@
 #ifdef CONFIG_FB_MSM_MDSS_XLOG_DEBUG
 #define XLOG_DEFAULT_ENABLE 1
 #else
+#if defined(CONFIG_LGE_DISPLAY_XLOG_ENABLED)
+#define XLOG_DEFAULT_ENABLE 1
+#else
 #define XLOG_DEFAULT_ENABLE 0
 #endif
+#endif
 
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+#if defined(CONFIG_LGE_DISPLAY_XLOG_ENABLED)
+#define XLOG_DEFAULT_PANIC 1
+#define XLOG_DEFAULT_REGDUMP_ENABLE 1
+#define XLOG_DEFAULT_REGDUMP 0x3 /* dump in RAM and LOG*/
+#else
+#define XLOG_DEFAULT_PANIC 0
+#define XLOG_DEFAULT_REGDUMP_ENABLE 0
+#define XLOG_DEFAULT_REGDUMP 0x2 /* dump in RAM */
+#endif
+#define XLOG_DEFAULT_DBGBUSDUMP 0x2 /* dump in RAM */
+#define XLOG_DEFAULT_VBIF_DBGBUSDUMP 0x2 /* dump in RAM */
+#else
 #define XLOG_DEFAULT_PANIC 1
 #define XLOG_DEFAULT_REGDUMP 0x2 /* dump in RAM */
 #define XLOG_DEFAULT_DBGBUSDUMP 0x2 /* dump in RAM */
 #define XLOG_DEFAULT_VBIF_DBGBUSDUMP 0x2 /* dump in RAM */
+#endif
 #define XLOG_DEFAULT_DSI_DBGBUSDUMP 0x2 /* dump in RAM */
 
 /*
@@ -87,6 +105,9 @@ struct mdss_dbg_xlog {
 	u32 *dsi_dbgbus_dump; /* address for the dsi debug bus dump */
 } mdss_dbg_xlog;
 
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+unsigned int reg_dump_enable;
+#endif
 static inline bool mdss_xlog_is_enabled(u32 flag)
 {
 	return (flag & mdss_dbg_xlog.xlog_enable) ||
@@ -144,6 +165,12 @@ void mdss_xlog(const char *name, int line, int flag, ...)
 
 	if (!mdss_xlog_is_enabled(flag))
 		return;
+
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+#if !defined(CONFIG_LGE_DISPLAY_XLOG_ENABLED)
+	return;
+#endif
+#endif
 
 	spin_lock_irqsave(&xlock, flags);
 	log = &mdss_dbg_xlog.logs[mdss_dbg_xlog.curr];
@@ -484,9 +511,15 @@ void mdss_dump_reg(const char *dump_name, u32 reg_dump_flag, char *addr,
 
 		if (*dump_mem) {
 			dump_addr = *dump_mem;
+#if defined(CONFIG_LGE_DISPLAY_XLOG_ENABLED)
+			pr_info("%s: start_addr:0x%p end_addr:0x%p reg_addr=0x%p\n",
+				dump_name, dump_addr, dump_addr + (u32)len * 16,
+				addr);
+#else
 			pr_info("%s: start_addr:0x%pK end_addr:0x%pK reg_addr=0x%pK\n",
 				dump_name, dump_addr, dump_addr + (u32)len * 16,
 				addr);
+#endif
 		} else {
 			in_mem = false;
 			pr_err("dump_mem: kzalloc fails!\n");
@@ -505,8 +538,13 @@ void mdss_dump_reg(const char *dump_name, u32 reg_dump_flag, char *addr,
 		xc = readl_relaxed(addr+0xc);
 
 		if (in_log)
+#if defined(CONFIG_LGE_DISPLAY_XLOG_ENABLED)
+			pr_info("%p : %08x %08x %08x %08x\n", addr, x0, x4, x8,
+				xc);
+#else
 			pr_info("%pK : %08x %08x %08x %08x\n", addr, x0, x4, x8,
 				xc);
+#endif
 
 		if (dump_addr && in_mem) {
 			dump_addr[i*4] = x0;
@@ -543,7 +581,11 @@ static void mdss_dump_reg_by_ranges(struct mdss_debug_base *dbg,
 			len = get_dump_range(&xlog_node->offset,
 				dbg->max_offset);
 			addr = dbg->base + xlog_node->offset.start;
+#if defined(CONFIG_LGE_DISPLAY_XLOG_ENABLED)
+			pr_info("%s: range_base=0x%p start=0x%x end=0x%x\n",
+#else
 			pr_debug("%s: range_base=0x%pK start=0x%x end=0x%x\n",
+#endif
 				xlog_node->range_name,
 				addr, xlog_node->offset.start,
 				xlog_node->offset.end);
@@ -554,7 +596,11 @@ static void mdss_dump_reg_by_ranges(struct mdss_debug_base *dbg,
 	} else {
 		/* If there is no list to dump ranges, dump all registers */
 		pr_info("Ranges not found, will dump full registers");
+#if defined(CONFIG_LGE_DISPLAY_XLOG_ENABLED)
+		pr_info("base:0x%p len:%zu\n", dbg->base, dbg->max_offset);
+#else
 		pr_info("base:0x%pK len:%zu\n", dbg->base, dbg->max_offset);
+#endif
 		addr = dbg->base;
 		len = dbg->max_offset;
 		mdss_dump_reg((const char *)dbg->name, reg_dump_flag, addr,
@@ -677,6 +723,9 @@ static void xlog_debug_work(struct work_struct *work)
 		mdss_dbg_xlog.work_dsi_dbgbus);
 }
 
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+extern int panel_not_connected;
+#endif
 void mdss_xlog_tout_handler_default(bool queue, const char *name, ...)
 {
 	int i, index = 0;
@@ -688,6 +737,16 @@ void mdss_xlog_tout_handler_default(bool queue, const char *name, ...)
 	struct mdss_debug_base *blk_base = NULL;
 	struct mdss_debug_base **blk_arr;
 	u32 blk_len;
+
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+	if(!reg_dump_enable)
+		return;
+
+	if(panel_not_connected) {
+		pr_debug("[%s] reg-dump skipped \n", __func__);
+		return;
+	}
+#endif
 
 	if (!mdss_xlog_is_enabled(MDSS_XLOG_DEFAULT))
 		return;
@@ -813,6 +872,12 @@ int mdss_create_xlog_debug(struct mdss_debug_data *mdd)
 			    &mdss_dbg_xlog.enable_dbgbus_dump);
 	debugfs_create_u32("vbif_dbgbus_dump", 0644, mdss_dbg_xlog.xlog,
 			    &mdss_dbg_xlog.enable_vbif_dbgbus_dump);
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+	debugfs_create_u32("reg_dump_enable", 0644, mdss_dbg_xlog.xlog,
+				&reg_dump_enable);
+
+	reg_dump_enable = XLOG_DEFAULT_REGDUMP_ENABLE;
+#endif
 
 	mdss_dbg_xlog.xlog_enable = XLOG_DEFAULT_ENABLE;
 	mdss_dbg_xlog.panic_on_err = XLOG_DEFAULT_PANIC;

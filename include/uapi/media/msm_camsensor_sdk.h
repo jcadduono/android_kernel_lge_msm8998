@@ -113,6 +113,10 @@ enum msm_sensor_power_seq_gpio_t {
 	SENSOR_GPIO_FL_RESET,
 	SENSOR_GPIO_CUSTOM1,
 	SENSOR_GPIO_CUSTOM2,
+#if 1 /* CONFIG_MACH_LGE */
+	SENSOR_GPIO_LDAF_EN,
+	SENSOR_GPIO_OIS_RESET,
+#endif
 	SENSOR_GPIO_MAX,
 };
 
@@ -176,6 +180,7 @@ enum actuator_type {
 	ACTUATOR_PIEZO,
 	ACTUATOR_HVCM,
 	ACTUATOR_BIVCM,
+	ACTUATOR_CLOSE_LOOP_HVCM,
 };
 
 enum msm_flash_driver_type {
@@ -302,6 +307,10 @@ struct msm_camera_sensor_slave_info {
 	unsigned char  is_init_params_valid;
 	struct msm_sensor_init_params sensor_init_params;
 	enum msm_sensor_output_format_t output_format;
+#if 1 /* CONFIG_MACH_LGE */
+	char proxy_name[32];
+#endif
+
 	uint8_t bypass_video_node_creation;
 };
 
@@ -398,6 +407,13 @@ struct region_params_t {
 	unsigned short code_per_step;
 	/* qvalue for converting float type numbers to integer format */
 	unsigned int qvalue;
+#if 1 // #ifdef CONFIG_LG_OIS
+	int infinity_dac;
+	int macro_dac;
+	int dac_20;
+	int dac_40;
+	int macro_mecha_end;
+#endif
 };
 
 struct reg_settings_t {

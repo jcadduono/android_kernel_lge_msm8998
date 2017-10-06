@@ -867,6 +867,7 @@ static enum alarmtimer_restart alarmtimer_nsleep_wakeup(struct alarm *alarm,
 {
 	struct task_struct *task = (struct task_struct *)alarm->data;
 
+	pr_err("Alarm_wakeup task = %s, pid = %d, tgid = %d\n", task->comm, task->pid, task->tgid);
 	alarm->data = NULL;
 	if (task)
 		wake_up_process(task);
@@ -1031,8 +1032,13 @@ out:
 
 /* Suspend hook structures */
 static const struct dev_pm_ops alarmtimer_pm_ops = {
+#ifdef CONFIG_LGE_PM
+	.suspend_noirq = alarmtimer_suspend,
+	.resume_noirq = alarmtimer_resume,
+#else
 	.suspend = alarmtimer_suspend,
 	.resume = alarmtimer_resume,
+#endif
 };
 
 static struct platform_driver alarmtimer_driver = {

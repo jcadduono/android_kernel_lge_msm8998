@@ -88,6 +88,9 @@ enum sensor_sub_module_t {
 	SUB_MODULE_EXT,
 	SUB_MODULE_IR_LED,
 	SUB_MODULE_IR_CUT,
+#if 1 /* CONFIG_MACH_LGE */
+	SUB_MODULE_PROXY,
+#endif
 	SUB_MODULE_MAX,
 };
 
@@ -341,6 +344,8 @@ enum msm_sensor_cfg_type_t {
 	CFG_SET_AUTOFOCUS,
 	CFG_CANCEL_AUTOFOCUS,
 	CFG_SET_STREAM_TYPE,
+	CFG_GET_SENSER_TEMPERATURE,/*LGE_CHANGE, LG_AF, 2017, By AF Member*/
+	CFG_GET_INDUCTION_AF_CAL,/*LGE_CHANGE, LG_AF, 2017, By AF Member*/
 	CFG_SET_I2C_SYNC_PARAM,
 	CFG_WRITE_I2C_ARRAY_ASYNC,
 	CFG_WRITE_I2C_ARRAY_SYNC,
@@ -365,6 +370,30 @@ struct msm_ois_opcode {
 	uint32_t memory;
 };
 
+
+#if 1 /* CONFIG_MACH_LGE */
+enum msm_ois_cfg_type_t {
+	CFG_OIS_INIT,
+	CFG_GET_OIS_INFO,
+	CFG_OIS_POWERDOWN,
+	CFG_OIS_INI_SET,
+	CFG_OIS_ENABLE,
+	CFG_OIS_DISABLE,
+	CFG_OIS_POWERUP,
+	CFG_OIS_CONTROL,
+	CFG_OIS_I2C_WRITE_SEQ_TABLE,
+	CFG_OIS_SET_MODE,
+	CFG_OIS_MOVE_LENS,
+	CFG_OIS_PWM_MODE,
+#if 1
+	/* renesas */
+	CFG_OIS_GYRO_CALIBRATION,
+	CFG_OIS_GET_INFO,
+	CFG_OIS_MOVEMENT_TEST
+#endif
+/* #endif */
+};
+#else
 enum msm_ois_cfg_type_t {
 	CFG_OIS_INIT,
 	CFG_OIS_POWERDOWN,
@@ -372,10 +401,14 @@ enum msm_ois_cfg_type_t {
 	CFG_OIS_CONTROL,
 	CFG_OIS_I2C_WRITE_SEQ_TABLE,
 };
+#endif
+
+
 
 enum msm_ois_cfg_download_type_t {
 	CFG_OIS_DOWNLOAD,
 	CFG_OIS_DATA_CONFIG,
+	CFG_OIS_RENESAS_FW_UPDATE,/* CONFIG_MACH_LGE */
 };
 
 enum msm_ois_i2c_operation {
@@ -392,6 +425,22 @@ struct reg_settings_ois_t {
 	uint32_t delay;
 };
 
+#if 1 /* CONFIG_LG_OIS */
+struct msm_ois_info_t{
+	char ois_provider[MAX_SENSOR_NAME];
+	int16_t gyro[2];
+	int16_t target[2];
+	int16_t hall[2];
+	uint8_t is_stable;
+};
+
+enum ois_ver_t {
+	OIS_VER_RELEASE,
+	OIS_VER_CALIBRATION,
+	OIS_VER_DEBUG
+};
+#endif
+
 struct msm_ois_params_t {
 	uint16_t data_size;
 	uint16_t setting_size;
@@ -404,6 +453,10 @@ struct msm_ois_params_t {
 
 struct msm_ois_set_info_t {
 	struct msm_ois_params_t ois_params;
+#if 1 /* CONFIG_LG_OIS */
+	struct msm_ois_info_t *ois_info;
+	void	*setting;
+#endif
 };
 
 struct msm_actuator_move_params_t {
@@ -492,6 +545,7 @@ struct msm_ois_cfg_data {
 struct msm_ois_cfg_download_data {
 	int cfgtype;
 	struct msm_ois_slave_info slave_info;
+	char fw_binary[MAX_OIS_NAME_SIZE]; /* CONFIG_MACH_LGE */
 };
 
 struct msm_actuator_set_position_t {
@@ -568,6 +622,44 @@ struct sensor_init_cfg_data {
 	} cfg;
 };
 
+#if 1 /* CONFIG_MACH_LGE */
+#define MAX_PROXY_MOD_NAME_SIZE 32
+#define MAX_PROXY_NAME_SIZE 32
+#define MAX_PROXY_REG_SETTINGS 800
+
+enum msm_proxy_cfg_type_t {
+	CFG_PROXY_INIT,
+	CFG_PROXY_ON,
+	CFG_PROXY_OFF,
+	CFG_GET_PROXY,
+	CFG_PROXY_THREAD_ON,
+	CFG_PROXY_THREAD_PAUSE,
+	CFG_PROXY_THREAD_RESTART,
+	CFG_PROXY_THREAD_OFF,
+	CFG_PROXY_CAL,
+	CFG_PROXY_POWERDOWN,
+	CFG_PROXY_POWERUP,
+};
+
+struct msm_proxy_info_t {
+	uint16_t true_range_millimeter;
+	uint32_t measurement_time_usec;
+	uint32_t signal_rtn_rate_mcps;
+	uint32_t ambient_rtn_rate_mcps;
+	uint32_t effective_spad_rtn_count;
+	uint32_t cal_count;
+	uint32_t cal_done;
+};
+
+struct msm_proxy_cfg_data {
+	int cfgtype;
+	union {
+		struct msm_proxy_info_t set_info;
+	} cfg;
+};
+
+#endif
+
 #define VIDIOC_MSM_SENSOR_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 1, struct sensorb_cfg_data)
 
@@ -616,5 +708,12 @@ struct sensor_init_cfg_data {
 #define VIDIOC_MSM_IR_CUT_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 15, struct msm_ir_cut_cfg_data_t)
 
+#if 1 /* CONFIG_MACH_LGE */
+#define VIDIOC_MSM_PROXY_CFG \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 18, struct msm_proxy_cfg_data)
+
+#define VIDIOC_MSM_OIS_GET_INFO \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 19, struct msm_ois_info_t)
 #endif
 
+#endif

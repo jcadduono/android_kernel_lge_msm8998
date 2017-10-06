@@ -758,12 +758,15 @@ const char * const vmstat_text[] = {
 	"numa_local",
 	"numa_other",
 #endif
-	"workingset_refault",
-	"workingset_activate",
-	"workingset_nodereclaim",
+	"refault_inactive_file",
+	"refault_active_file",
+	"refault_nodereclaim",
 	"nr_anon_transparent_hugepages",
 	"nr_free_cma",
 	"nr_swapcache",
+#ifdef CONFIG_MIGRATE_HIGHORDER
+	"nr_free_highorder",
+#endif
 
 	/* enum writeback_stat_item counters */
 	"nr_dirty_threshold",
@@ -934,6 +937,9 @@ static char * const migratetype_names[MIGRATE_TYPES] = {
 	"HighAtomic",
 #ifdef CONFIG_MEMORY_ISOLATION
 	"Isolate",
+#endif
+#ifdef CONFIG_MIGRATE_HIGHORDER
+	"Highorder",
 #endif
 };
 

@@ -575,6 +575,10 @@ int msm_camera_get_dt_power_setting_data(struct device_node *of_node,
 				ps[i].seq_val = SENSOR_GPIO_CUSTOM1;
 			else if (!strcmp(seq_name, "sensor_gpio_custom2"))
 				ps[i].seq_val = SENSOR_GPIO_CUSTOM2;
+#ifdef CONFIG_MACH_LGE
+			else if (!strcmp(seq_name, "sensor_gpio_ldaf"))
+				ps[i].seq_val = SENSOR_GPIO_LDAF_EN;
+#endif
 			else
 				rc = -EILSEQ;
 			break;
@@ -1077,6 +1081,50 @@ int msm_camera_init_gpio_pin_tbl(struct device_node *of_node,
 	} else {
 		rc = 0;
 	}
+
+#ifdef CONFIG_MACH_LGE
+	rc = of_property_read_u32(of_node, "qcom,gpio-ois-reset", &val);
+	if (rc != -EINVAL) {
+		if (rc < 0) {
+			pr_err("%s:%d read qcom,gpio-ois-reset failed rc %d\n",
+				__func__, __LINE__, rc);
+			goto ERROR;
+		} else if (val >= gpio_array_size) {
+			pr_err("%s:%d qcom,gpio-ois-reset invalid %d\n",
+				__func__, __LINE__, val);
+			rc = -EINVAL;
+			goto ERROR;
+		}
+		gconf->gpio_num_info->gpio_num[SENSOR_GPIO_OIS_RESET] =
+			gpio_array[val];
+		gconf->gpio_num_info->valid[SENSOR_GPIO_OIS_RESET] = 1;
+		CDBG("%s qcom,gpio-ois-reset %d\n", __func__,
+			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_OIS_RESET]);
+	} else {
+		rc = 0;
+	}
+
+	rc = of_property_read_u32(of_node, "qcom,gpio-ldaf-en", &val);
+	if (rc != -EINVAL) {
+		if (rc < 0) {
+			pr_err("%s:%d read qcom,gpio-ldaf-en failed rc %d\n",
+				__func__, __LINE__, rc);
+			goto ERROR;
+		} else if (val >= gpio_array_size) {
+			pr_err("%s:%d qcom,gpio-ldaf-en invalid %d\n",
+				__func__, __LINE__, val);
+			rc = -EINVAL;
+			goto ERROR;
+		}
+		gconf->gpio_num_info->gpio_num[SENSOR_GPIO_LDAF_EN] =
+			gpio_array[val];
+		gconf->gpio_num_info->valid[SENSOR_GPIO_LDAF_EN] = 1;
+		CDBG("%s qcom,gpio-ldaf-en %d\n", __func__,
+			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_LDAF_EN]);
+	} else {
+		rc = 0;
+	}
+#endif
 
 	return rc;
 

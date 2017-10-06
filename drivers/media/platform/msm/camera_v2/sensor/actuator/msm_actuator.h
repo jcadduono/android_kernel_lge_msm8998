@@ -77,6 +77,12 @@ struct msm_actuator_ctrl_t {
 	struct platform_driver *pdriver;
 	struct platform_device *pdev;
 	struct msm_camera_i2c_client i2c_client;
+/* LGE_CHANGE_S, for RENESAS CLAF test, 2016-12-02, hyungmoo.huh@lge.com */
+	uint16_t af_boundary_min;
+	uint16_t af_boundary_max;
+	uint8_t init_set_flag;
+	uint32_t act_type;
+/* LGE_CHANGE_E, for RENESAS CLAF test, 2016-12-02, hyungmoo.huh@lge.com */
 	enum msm_camera_device_type_t act_device_type;
 	struct msm_sd_subdev msm_sd;
 	enum af_camera_name cam_name;

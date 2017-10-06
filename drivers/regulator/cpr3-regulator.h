@@ -1107,4 +1107,8 @@ static inline int cpr3_adjust_target_quotients(struct cpr3_regulator *vreg,
 
 #endif /* CONFIG_REGULATOR_CPR3 */
 
+#ifdef CONFIG_LGE_CPR_MANAGER
+s8 get_lg_cpr_margins(const char *name);
+#endif
+
 #endif /* __REGULATOR_CPR_REGULATOR_H__ */

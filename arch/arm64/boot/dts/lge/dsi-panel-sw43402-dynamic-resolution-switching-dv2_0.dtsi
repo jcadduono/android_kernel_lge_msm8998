@@ -1,0 +1,200 @@
+/* Copyright (c) 2014, Code Aurora Forum. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&mdss_mdp {
+	dsi_sw43402_dsc_qhd_cmd_dv2_0: qcom,mdss_dsi_sw43402_dsc_qhd_cmd_dv2_0 {
+			qcom,dynamic-mode-switch-enabled;
+			qcom,dynamic-mode-switch-type = "dynamic-resolution-switch-immediate";
+
+			qcom,mdss-dsi-display-timings {
+				qhd {
+					qcom,mdss-dsi-timing-default;
+					qcom,mdss-dsi-panel-framerate = <60>;
+					qcom,mdss-dsi-panel-width = <1440>;
+					qcom,mdss-dsi-panel-height = <2880>;
+					qcom,mdss-dsi-h-front-porch = <92>;
+					qcom,mdss-dsi-h-back-porch = <48>;
+					qcom,mdss-dsi-h-pulse-width = <32>;
+					qcom,mdss-dsi-h-sync-skew = <0>;
+					qcom,mdss-dsi-v-back-porch = <25>;
+					qcom,mdss-dsi-v-front-porch = <10>;
+					qcom,mdss-dsi-v-pulse-width = <1>;
+					qcom,mdss-dsi-h-left-border = <0>;
+					qcom,mdss-dsi-h-right-border = <0>;
+					qcom,mdss-dsi-v-top-border = <0>;
+					qcom,mdss-dsi-v-bottom-border = <0>;
+					qcom,mdss-dsi-panel-timings = [00 14 05 05 08 0E 04 05 04 03 04 00];
+					qcom,mdss-dsi-t-clk-post = <0x06>;
+					qcom,mdss-dsi-t-clk-pre = <0x20>;
+					qcom,panel-roi-alignment = <1440 0 1440 16 1440 16>;
+
+					qcom,mdss-dsi-on-command = [
+						39 01 00 00 00 00 03 B0 20 43
+						15 01 00 00 00 00 02 3D 00
+						39 01 00 00 00 00 03 DF 4B 70
+						15 01 00 00 00 00 02 F2 00
+						39 01 00 00 01 00 03 FF 03 00
+						05 01 00 00 14 00 01 35
+						05 01 00 00 14 00 01 11
+						15 01 00 00 00 00 02 51 03
+						15 01 00 00 00 00 02 53 00
+						15 01 00 00 00 00 02 55 0C
+						39 01 00 00 00 00 03 B0 A5 00
+						39 01 00 00 00 00 16 D4 10 00 FF A8 80 54 80 20 20 20 20 56 00 56 00 56 00 15 55 56 55
+						39 01 00 00 00 00 1D D6 70 56 5E 40 18 18 F0 C8 88 88 DC 00 10 06 10 30 78 78 78 6C 74 5C 34 52 64 60 58 5C
+						39 01 00 00 00 00 1D D7 70 5A 58 48 38 08 D8 E8 06 F8 F8 E8 A4 D8 28 3E 7C 74 6C 64 68 60 64 64 74 50 48 5A
+						39 01 00 00 00 00 1D D8 70 48 50 38 30 14 F0 C8 84 82 C0 1C 14 00 00 3A 6A 62 54 50 58 4C 28 44 62 5A 48 52
+						39 01 00 00 00 00 1D D9 70 5A 5E 40 30 08 F4 F8 00 EC F0 FD 14 06 3C 3A 6A 64 5C 5C 62 62 50 56 60 52 50 56
+						39 01 00 00 00 00 05 E8 08 90 10 25
+						39 01 00 00 00 00 03 FB 03 77
+						39 01 00 00 14 00 06 ED 13 00 07 00 13
+						39 01 00 00 46 00 0F E2 20 0D 08 A8 0A AA 04 A4 80 80 80 5C 5C 5C
+						];
+					qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
+
+					qcom,mdss-dsi-post-panel-on-command = [
+						39 01 00 00 3C 00 03 B0 A5 00
+						05 01 00 00 00 00 01 29
+						];
+
+					qcom,mdss-dsi-timing-switch-command = [
+						15 01 00 00 00 00 02 3D 00
+						];
+					qcom,mdss-dsi-timing-switch-command-state = "dsi_lp_mode";
+
+					qcom,compression-mode = "dsc";
+					qcom,config-select = <&dsi_sw43402_dsc_cmd_config3>;
+					qcom,mdss-dsc-version = <0x11>;
+					qcom,mdss-dsc-scr-version = <0x1>;
+				};
+				fhd {
+					qcom,mdss-dsi-panel-framerate = <60>;
+					qcom,mdss-dsi-panel-width = <1080>;
+					qcom,mdss-dsi-panel-height = <2160>;
+					qcom,mdss-dsi-h-front-porch = <92>;
+					qcom,mdss-dsi-h-back-porch = <168>;
+					qcom,mdss-dsi-h-pulse-width = <32>;
+					qcom,mdss-dsi-h-sync-skew = <0>;
+					qcom,mdss-dsi-v-back-porch = <25>;
+					qcom,mdss-dsi-v-front-porch = <730>;
+					qcom,mdss-dsi-v-pulse-width = <1>;
+					qcom,mdss-dsi-h-left-border = <0>;
+					qcom,mdss-dsi-h-right-border = <0>;
+					qcom,mdss-dsi-v-top-border = <0>;
+					qcom,mdss-dsi-v-bottom-border = <0>;
+					qcom,mdss-dsi-panel-timings = [00 14 05 05 08 0E 04 05 04 03 04 00];
+					qcom,mdss-dsi-t-clk-post = <0x06>;
+					qcom,mdss-dsi-t-clk-pre = <0x20>;
+					qcom,panel-roi-alignment = <1440 0 1440 16 1440 16>;
+
+					qcom,mdss-dsi-on-command = [
+						39 01 00 00 00 00 03 B0 20 43
+						15 01 00 00 00 00 02 3D 01
+						39 01 00 00 00 00 03 DF 4B 70
+						15 01 00 00 00 00 02 F2 00
+						39 01 00 00 01 00 03 FF 03 00
+						05 01 00 00 14 00 01 35
+						05 01 00 00 14 00 01 11
+						15 01 00 00 00 00 02 51 03
+						15 01 00 00 00 00 02 53 00
+						15 01 00 00 00 00 02 55 0C
+						39 01 00 00 00 00 03 B0 A5 00
+						39 01 00 00 00 00 16 D4 10 00 FF A8 80 54 80 20 20 20 20 56 00 56 00 56 00 15 55 56 55
+						39 01 00 00 00 00 1D D6 70 56 5E 40 18 18 F0 C8 88 88 DC 00 10 06 10 30 78 78 78 6C 74 5C 34 52 64 60 58 5C
+						39 01 00 00 00 00 1D D7 70 5A 58 48 38 08 D8 E8 06 F8 F8 E8 A4 D8 28 3E 7C 74 6C 64 68 60 64 64 74 50 48 5A
+						39 01 00 00 00 00 1D D8 70 48 50 38 30 14 F0 C8 84 82 C0 1C 14 00 00 3A 6A 62 54 50 58 4C 28 44 62 5A 48 52
+						39 01 00 00 00 00 1D D9 70 5A 5E 40 30 08 F4 F8 00 EC F0 FD 14 06 3C 3A 6A 64 5C 5C 62 62 50 56 60 52 50 56
+						39 01 00 00 00 00 05 E8 08 90 10 25
+						39 01 00 00 00 00 03 FB 03 77
+						39 01 00 00 14 00 06 ED 13 00 07 00 13
+						39 01 00 00 46 00 0F E2 20 0D 08 A8 0A AA 04 A4 80 80 80 5C 5C 5C
+						];
+					qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
+
+					qcom,mdss-dsi-post-panel-on-command = [
+						39 01 00 00 3C 00 03 B0 A5 00
+						05 01 00 00 00 00 01 29
+						];
+
+					qcom,mdss-dsi-timing-switch-command = [
+						15 01 00 00 00 00 02 3D 01
+						];
+					qcom,mdss-dsi-timing-switch-command-state = "dsi_lp_mode";
+
+					qcom,compression-mode = "dsc";
+					qcom,config-select = <&dsi_sw43402_dsc_cmd_config1>;
+					qcom,mdss-dsc-version = <0x11>;
+					qcom,mdss-dsc-scr-version = <0x1>;
+				};
+				hd {
+					qcom,mdss-dsi-panel-framerate = <60>;
+					qcom,mdss-dsi-panel-width = <720>;
+					qcom,mdss-dsi-panel-height = <1440>;
+					qcom,mdss-dsi-h-front-porch = <92>;
+					qcom,mdss-dsi-h-back-porch = <288>;
+					qcom,mdss-dsi-h-pulse-width = <32>;
+					qcom,mdss-dsi-h-sync-skew = <0>;
+					qcom,mdss-dsi-v-back-porch = <25>;
+					qcom,mdss-dsi-v-front-porch = <1450>;
+					qcom,mdss-dsi-v-pulse-width = <1>;
+					qcom,mdss-dsi-h-left-border = <0>;
+					qcom,mdss-dsi-h-right-border = <0>;
+					qcom,mdss-dsi-v-top-border = <0>;
+					qcom,mdss-dsi-v-bottom-border = <0>;
+					qcom,mdss-dsi-panel-timings = [00 14 05 05 08 0E 04 05 04 03 04 00];
+					qcom,mdss-dsi-t-clk-post = <0x06>;
+					qcom,mdss-dsi-t-clk-pre = <0x20>;
+					qcom,panel-roi-alignment = <1440 0 1440 16 1440 16>;
+
+					qcom,mdss-dsi-on-command = [
+						39 01 00 00 00 00 03 B0 20 43
+						15 01 00 00 00 00 02 3D 03
+						39 01 00 00 00 00 03 DF 4B 70
+						15 01 00 00 00 00 02 F2 00
+						39 01 00 00 01 00 03 FF 03 00
+						05 01 00 00 14 00 01 35
+						05 01 00 00 14 00 01 11
+						15 01 00 00 00 00 02 51 03
+						15 01 00 00 00 00 02 53 00
+						15 01 00 00 00 00 02 55 0C
+						39 01 00 00 00 00 03 B0 A5 00
+						39 01 00 00 00 00 16 D4 10 00 FF A8 80 54 80 20 20 20 20 56 00 56 00 56 00 15 55 56 55
+						39 01 00 00 00 00 1D D6 70 56 5E 40 18 18 F0 C8 88 88 DC 00 10 06 10 30 78 78 78 6C 74 5C 34 52 64 60 58 5C
+						39 01 00 00 00 00 1D D7 70 5A 58 48 38 08 D8 E8 06 F8 F8 E8 A4 D8 28 3E 7C 74 6C 64 68 60 64 64 74 50 48 5A
+						39 01 00 00 00 00 1D D8 70 48 50 38 30 14 F0 C8 84 82 C0 1C 14 00 00 3A 6A 62 54 50 58 4C 28 44 62 5A 48 52
+						39 01 00 00 00 00 1D D9 70 5A 5E 40 30 08 F4 F8 00 EC F0 FD 14 06 3C 3A 6A 64 5C 5C 62 62 50 56 60 52 50 56
+						39 01 00 00 00 00 05 E8 08 90 10 25
+						39 01 00 00 00 00 03 FB 03 77
+						39 01 00 00 14 00 06 ED 13 00 07 00 13
+						39 01 00 00 46 00 0F E2 20 0D 08 A8 0A AA 04 A4 80 80 80 5C 5C 5C
+						];
+
+					qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
+
+					qcom,mdss-dsi-post-panel-on-command = [
+						39 01 00 00 3C 00 03 B0 A5 00
+						05 01 00 00 00 00 01 29
+						];
+
+					qcom,mdss-dsi-timing-switch-command = [
+						15 01 00 00 00 00 02 3D 03
+						];
+					qcom,mdss-dsi-timing-switch-command-state = "dsi_lp_mode";
+
+					qcom,compression-mode = "dsc";
+					qcom,config-select = <&dsi_sw43402_dsc_cmd_config2>;
+					qcom,mdss-dsc-version = <0x11>;
+					qcom,mdss-dsc-scr-version = <0x1>;
+				};
+			};
+	};
+};

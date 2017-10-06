@@ -908,11 +908,15 @@ static int gspca_init_transfer(struct gspca_dev *gspca_dev)
 		}
 		if (!gspca_dev->cam.no_urb_create) {
 			PDEBUG(D_STREAM, "init transfer alt %d", alt);
-			ret = create_urbs(gspca_dev,
-				alt_xfer(&intf->altsetting[alt], xfer,
-					 gspca_dev->xfer_ep));
+			ep = alt_xfer(&intf->altsetting[alt], xfer, gspca_dev->xfer_ep);
+			if (ep != NULL) {
+				ret = create_urbs(gspca_dev, ep);
 			if (ret < 0) {
 				destroy_urbs(gspca_dev);
+				goto out;
+			}
+			} else {
+				ret = -EIO;
 				goto out;
 			}
 		}

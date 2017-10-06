@@ -103,7 +103,7 @@ void ecryptfs_dump_hex(char *data, int bytes)
 	if (ecryptfs_verbosity < 1)
 		return;
 	if (bytes != 0) {
-		printk(KERN_DEBUG "0x%.2x.", (unsigned char)data[i]);
+		ecryptfs_printk(KERN_DEBUG, "0x%.2x.", (unsigned char)data[i]);
 		i++;
 	}
 	while (i < bytes) {

@@ -107,6 +107,12 @@ config SCSI_UFS_TEST
 	the test-iosched and will be initiated when the test-iosched will
 	be chosen to be the active I/O scheduler.
 
+config UFS_LGE_FEATURE
+	tristate "Add LGE Feature for UFS device"
+	depends on SCSI_UFSHCD
+	---help---
+	This Feature adds for LGE modification
+
 config SCSI_UFSHCD_CMD_LOGGING
 	bool "Universal Flash Storage host controller driver layer command logging support"
 	depends on SCSI_UFSHCD

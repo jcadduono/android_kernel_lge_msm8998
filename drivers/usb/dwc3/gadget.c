@@ -37,6 +37,8 @@
 #include "gadget.h"
 #include "debug.h"
 #include "io.h"
+#include <soc/qcom/lge/power/lge_cable_detect.h>
+#include <soc/qcom/lge/power/lge_power_class.h>
 
 static void dwc3_gadget_wakeup_interrupt(struct dwc3 *dwc, bool remote_wakeup);
 static int dwc3_gadget_wakeup_int(struct dwc3 *dwc);
@@ -1798,6 +1800,20 @@ static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on, int suspend)
 	u32			reg;
 	u32			timeout = 500;
 	ktime_t start, diff;
+#ifdef CONFIG_LGE_USB_FACTORY
+	int rc = 0;
+	int boot_cable = 0;
+	union lge_power_propval lge_val = {0,};
+	struct lge_power *lge_cd_lpc;
+	lge_cd_lpc = lge_power_get_by_name("lge_cable_detect");
+	if(!lge_cd_lpc) {
+		pr_err("%s: lge_cd_lpc is not registered\n",__func__);
+	} else {
+		rc = lge_cd_lpc->get_property(lge_cd_lpc,
+				LGE_POWER_PROP_CABLE_TYPE_BOOT, &lge_val);
+		boot_cable = lge_val.intval;
+	}
+#endif
 
 	reg = dwc3_readl(dwc->regs, DWC3_DCTL);
 	if (is_on) {
@@ -1877,6 +1893,14 @@ static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on, int suspend)
 		udelay(1);
 	} while (1);
 
+#ifdef CONFIG_LGE_USB_FACTORY
+	if ((boot_cable == LT_CABLE_130K) && is_on) {
+		reg = dwc3_readl(dwc->regs, DWC3_DCFG);
+		reg &= ~(DWC3_DCFG_SPEED_MASK);
+		reg |= DWC3_DCFG_FULLSPEED2;
+		dwc3_writel(dwc->regs, DWC3_DCFG, reg);
+	}
+#endif
 	dwc3_trace(trace_dwc3_gadget, "gadget %s data soft-%s",
 			dwc->gadget_driver
 			? dwc->gadget_driver->function : "no-function",
@@ -2164,6 +2188,9 @@ static int dwc3_gadget_stop(struct usb_gadget *g)
 
 	spin_lock_irqsave(&dwc->lock, flags);
 	dwc->gadget_driver	= NULL;
+#ifdef CONFIG_LGE_USB
+	trace_printk("[F: %s]: %p, %pF\n", __func__, dwc, (void *)__builtin_return_address(0));
+#endif
 	spin_unlock_irqrestore(&dwc->lock, flags);
 
 	return 0;
@@ -2639,6 +2666,9 @@ static void dwc3_endpoint_interrupt(struct dwc3 *dwc,
 static void dwc3_disconnect_gadget(struct dwc3 *dwc)
 {
 	if (dwc->gadget_driver && dwc->gadget_driver->disconnect) {
+#ifdef CONFIG_LGE_USB
+		trace_printk("[F: %s]: %p\n", __func__, dwc);
+#endif
 		spin_unlock(&dwc->lock);
 		dwc->gadget_driver->disconnect(&dwc->gadget);
 		spin_lock(&dwc->lock);
@@ -2787,8 +2817,14 @@ static void dwc3_gadget_disconnect_interrupt(struct dwc3 *dwc)
 	dwc3_writel(dwc->regs, DWC3_DCTL, reg);
 
 	dbg_event(0xFF, "DISCONNECT", 0);
+#ifdef CONFIG_LGE_USB
+	if (dwc->gadget_driver)
 	dwc3_disconnect_gadget(dwc);
-
+	else
+		pr_err("%s: dwc->gadget is NULL\n", __func__);
+#else
+	dwc3_disconnect_gadget(dwc);
+#endif
 	dwc->gadget.speed = USB_SPEED_UNKNOWN;
 	dwc->setup_packet_pending = false;
 	dwc->link_state = DWC3_LINK_STATE_SS_DIS;
@@ -3503,10 +3539,12 @@ irqreturn_t dwc3_interrupt(int irq, void *_dwc)
 	dwc->irq_completion_time[dwc->irq_dbg_index] =
 		ktime_us_delta(ktime_get(), start_time);
 	dwc->irq_event_count[dwc->irq_dbg_index] = temp_cnt / 4;
-	dwc->irq_dbg_index = (dwc->irq_dbg_index + 1) % MAX_INTR_STATS;
 
 	if (ret == IRQ_WAKE_THREAD)
 		queue_work(dwc->dwc_wq, &dwc->bh_work);
+
+	dwc->irq_end_time[dwc->irq_dbg_index] = ktime_get();
+	dwc->irq_dbg_index = (dwc->irq_dbg_index + 1) % MAX_INTR_STATS;
 
 	return IRQ_HANDLED;
 }

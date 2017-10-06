@@ -1,0 +1,155 @@
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&pm8998_l28 {
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	qcom,init-voltage = <1800000>;
+	status = "ok";
+};
+
+/ {
+	aliases {
+		spi2 = &spi_2;
+	};
+
+	soc {
+		spi_2: spi@c176000{	// [Modified] QUP_BASE address for BLSP# QUP# (ref. AP datasheet, This model use BLSP-1 QUP1)
+			status = "ok";
+			compatible = "qcom,spi-qup-v2"; // [Fixed] Should be "qcom,spi-qup-v2".
+
+			// [Fixed] Address, size for slave chips.
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* [Fixed] Resister region names referenced in reg.
+				"spi_physical"     : Physical address of controller register blocks.
+				when use BAM mode, add "spi_bam_physical"
+				"spi_bam_physical" : Physical address of BAM controller.
+				Keep the same names. */
+			reg-names = "spi_physical", "spi_bam_physical";
+
+			/* [Modified] Modify the reg field as below to add BLSP BAM base address (ref. AP datasheet)
+				First Row is BLSP_QUP base address, size,
+				Second Row is BAM address, size. */
+			reg = <0xC176000 0x600>, <0xC144000 0x25000>;
+
+			/* [Fixed] Interrupt resource names referenced in interrupts.
+				"spi_irq"     : QUP-core interrupt
+				when use BAM mode, add "spi_bam_irq"
+				"spi_bam_irq" : BAM interrupt
+				Keep the same names. */
+			interrupt-names = "spi_irq", "spi_bam_irq";
+
+			/* [Modified] Replace the interrupt filed. (ref. AP datasheet)
+				First Field  : SPI interrupt, keep 0
+				Second Field : Interrupt #
+				Third Field  : Trigger type, keep 0
+				First Row is BLSP_QUP base, Second Row is BAM. */
+			interrupts = <0 96 0>, <0 238 0>;
+
+			// [Fixed] Specifies maximum SPI clock frequency of AP(50 MHz). (ref. QCT SPI datasheet)
+			spi-max-frequency = <50000000>;
+
+			// [Modified] BLSP bus master ID. (ref. AP datasheet)
+			qcom,master-id = <86>;
+
+			// [Fixed] Set up the clocks, Keep the same names.
+			clock-names = "iface_clk", "core_clk";
+			/* [Modified]
+				Add node to BLSP# AHB clock,
+				Add node to QUP Core clock (BLSP# QUP#)
+				Note : In clock QUP Core is label #1 to X. So QUP0 would be label as QUP1. */
+			clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>, <&clock_gcc clk_gcc_blsp1_qup2_spi_apps_clk>;
+
+			// [Fixed] When use pinctrl, enable.
+			qcom,use-pinctrl;
+			// [Fixed] Must contain "spi_default" and "spi_sleep" if pinctrl is to be used. Keep the same names.
+			pinctrl-names = "spi_default","spi_sleep";
+			/* [Fixed] List of phandles, each pointing at a pin configuration node within a pin controller.
+				The list of names to assign states, List entry 0 defines the name for integer state ID 0... */
+			pinctrl-0 = <&spi_tdmb_active>;
+			pinctrl-1 = <&spi_tdmb_suspend>;
+
+			/* [Modified] Set SPI GPIO (mosi, miso, cs, clk)
+				tlmm is the parent, second # is gpio #, third flag keep it 0. */
+			qcom,gpio-mosi = <&tlmm 31 0x00>;
+			qcom,gpio-miso = <&tlmm 34 0x00>;
+			qcom,gpio-cs0 = <&tlmm 33 0x00>;
+			qcom,gpio-clk = <&tlmm 32 0x00>;
+
+			// [Fixed] QUP uses infinite-mode. set zero
+			qcom,infinite-mode = <0>;
+			// [Fixed] When use BAM mode, enable.
+			qcom,use-bam;
+			// [Fixed] Version register exists.
+			qcom,ver-reg-exists;
+			// [Modified] Add consumer and producer pipes (ref. AP datasheet)
+			qcom,bam-consumer-pipe-index = <8>; // Consumer pipe from AP BLSP SPI pipe assignment
+			qcom,bam-producer-pipe-index = <9>; // Producer pipe from AP BLSP SPI pipe assignment
+		};
+	};
+};
+
+&spi_2 {
+	tdmb@0 {
+		compatible = "lge,tdmb"; // [Fixed] Should be "lge,tdmb".
+		reg = <0>;
+		interrupt-parent = <&tlmm>; // [Fixed] tlmm is the parent (msm8998)
+		interrupts = <95 0x0>; // [Modified] Set INT GPIO, first # is gpio #, second flag keep it 0.
+
+		// [Fixed] Specifies maximum SPI clock frequency of DMB chipset(38.4 MHz). (ref. FC8080 datasheet)
+		spi-max-frequency = <38400000>;
+
+		/* [Modified] List of phandles, each pointing at a pin configuration node within a pin controller.
+			The list of names to assign states, List entry 0,1,2... define the name for integer state ID 0,1,2...
+			Ex. control cases are INT(tdmb_int), EN(tdmb_ctrl), ANT SW(tdmb_ant) LNA(tdmb_lna)*/
+		pinctrl-names = "tdmb_int", "tdmb_ctrl";
+		pinctrl-0 = <&tdmb_int>;
+		pinctrl-1 = <&tdmb_ctrl>;
+
+		/* [Modified] Set DMB-EN, DMB-INT GPIO
+			tlmm is the parent, second # is gpio #, third flag keep it 0. */
+		tdmb-fc8080,irq-gpio = <&tlmm 95 0x00>;
+		tdmb-fc8080,en-gpio = <&tlmm 96 0x00>;
+
+		/* [Modified] set hw configure here
+			when use pmic clk buffer, change use-xtal to 0, and set xtal-freq value. */
+		use-xtal = <0>;
+		xtal-freq = <19200>;
+
+		/* [Modified] when using pmic clk buffer,
+			 you should check which clock buffer used for dmb device */
+		clock-names = "tdmb_xo";
+		clocks = <&clock_gcc clk_ln_bb_clk3>;
+
+		// [Modified] when use ant switching, change use-ant-sw to 1, and set ant-gpio.
+		use-ant-sw = <0>;
+		// Ex. tdmb-fc8080,ant-gpio = <&tlmm ?? 0x00>;
+
+		// [Modified] when use ldo for LDO_IN, chage ctrl-dmb-ldo to 1, and set dmb_ldo-supply.
+		ctrl-dmb-ldo = <1>;
+		dmb_ldo-supply = <&pm8998_l28>;
+
+		// [Modified] when use ldo for LNA(U1800), chage ctrl-lna-ldo to 1, and set lna_ldo-supply.
+		ctrl-lna-ldo = <0>;
+		//lna_ldo-supply = <&??>;
+
+		// [Modified] when use LNA, chage use-lna-ctrl to 1, and set lna-ctrl-gpio.
+		use-lna-ctrl = <0>;
+		//tdmb-fc8080,lna-ctrl-gpio = <&msm_gpio ?? 0x00>;
+
+		// [Modified] when use LNA EN, chage use-lna-en to 1, and set lna-en-gpio.
+		use-lna-en = <0>;
+		//tdmb-fc8080,lna-en-gpio = <&msm_gpio ?? 0x00>;
+	};
+};

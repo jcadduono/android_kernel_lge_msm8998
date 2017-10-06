@@ -273,6 +273,9 @@ struct qpnp_adc_tm_chip {
 	struct qpnp_adc_thr_info	th_info;
 	bool				adc_tm_hc;
 	struct qpnp_adc_tm_sensor	sensor[0];
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
+	spinlock_t			moisture_spin_lock;
+#endif
 };
 
 LIST_HEAD(qpnp_adc_tm_device_list);
@@ -2298,6 +2301,9 @@ static int qpnp_adc_tm_disable_rearm_low_thresholds(
 static int qpnp_adc_tm_read_status(struct qpnp_adc_tm_chip *chip)
 {
 	int rc = 0, sensor_num = 0;
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
+	unsigned long flags;
+#endif
 
 	if (qpnp_adc_tm_is_valid(chip))
 		return -ENODEV;
@@ -2314,6 +2320,9 @@ static int qpnp_adc_tm_read_status(struct qpnp_adc_tm_chip *chip)
 		}
 	}
 
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
+	spin_lock_irqsave(&chip->moisture_spin_lock, flags);
+#endif
 	while (sensor_num < chip->max_channels_available) {
 		if (chip->sensor[sensor_num].high_thr_triggered) {
 			rc = qpnp_adc_tm_disable_rearm_high_thresholds(
@@ -2342,6 +2351,9 @@ static int qpnp_adc_tm_read_status(struct qpnp_adc_tm_chip *chip)
 	}
 
 fail:
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
+	spin_unlock_irqrestore(&chip->moisture_spin_lock, flags);
+#endif
 	mutex_unlock(&chip->adc->adc_lock);
 
 	if (rc < 0 || (!chip->th_info.adc_tm_high_enable &&
@@ -2601,7 +2613,12 @@ static int qpnp_adc_tm_rc_check_sensor_trip(struct qpnp_adc_tm_chip *chip,
 					return IRQ_HANDLED;
 				}
 			}
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
+			if (!chip->sensor[i].low_thr_triggered)
+				*sensor_low_notify_num |= (status_low & 0x1) << i;
+#else
 			*sensor_low_notify_num |= (status_low & 0x1);
+#endif
 			chip->sensor[i].low_thr_triggered = true;
 		}
 
@@ -2632,7 +2649,12 @@ static int qpnp_adc_tm_rc_check_sensor_trip(struct qpnp_adc_tm_chip *chip,
 					return IRQ_HANDLED;
 				}
 			}
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
+			if (!chip->sensor[i].high_thr_triggered)
+				*sensor_high_notify_num |= (status_high & 0x1) << i;
+#else
 			*sensor_high_notify_num |= (status_high & 0x1);
+#endif
 			chip->sensor[i].high_thr_triggered = true;
 		}
 	}
@@ -2681,6 +2703,22 @@ static irqreturn_t qpnp_adc_tm_rc_thr_isr(int irq, void *data)
 		i++;
 	}
 
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
+	i = 0;
+	if (sensor_low_notify_num || sensor_high_notify_num) {
+		while (i < chip->max_channels_available) {
+			if (sensor_low_notify_num >> i & 0x1)
+				atomic_inc(&chip->wq_cnt);
+			if (sensor_high_notify_num >> i & 0x1)
+				atomic_inc(&chip->wq_cnt);
+			++i;
+		}
+	}
+	if (sensor_low_notify_num)
+		queue_work(chip->low_thr_wq, &chip->trigger_low_thr_work);
+	if (sensor_high_notify_num)
+		queue_work(chip->high_thr_wq, &chip->trigger_high_thr_work);
+#else
 	if (sensor_low_notify_num) {
 		atomic_inc(&chip->wq_cnt);
 		queue_work(chip->low_thr_wq, &chip->trigger_low_thr_work);
@@ -2690,6 +2728,7 @@ static irqreturn_t qpnp_adc_tm_rc_thr_isr(int irq, void *data)
 		atomic_inc(&chip->wq_cnt);
 		queue_work(chip->high_thr_wq, &chip->trigger_high_thr_work);
 	}
+#endif
 
 	return IRQ_HANDLED;
 }
@@ -2911,22 +2950,37 @@ int32_t qpnp_adc_tm_disable_chan_meas(struct qpnp_adc_tm_chip *chip,
 			goto fail;
 		}
 	} else {
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
+		rc = qpnp_adc_tm_reg_update(chip, QPNP_BTM_Mn_EN(dt_index),
+					QPNP_BTM_Mn_HIGH_THR_INT_EN, false);
+#else
 		rc = qpnp_adc_tm_reg_update(chip, QPNP_BTM_Mn_EN(btm_chan_num),
 					QPNP_BTM_Mn_HIGH_THR_INT_EN, false);
+#endif
 		if (rc < 0) {
 			pr_err("high thr disable err:%d\n", btm_chan_num);
 			return rc;
 		}
 
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
+		rc = qpnp_adc_tm_reg_update(chip, QPNP_BTM_Mn_EN(dt_index),
+					QPNP_BTM_Mn_LOW_THR_INT_EN, false);
+#else
 		rc = qpnp_adc_tm_reg_update(chip, QPNP_BTM_Mn_EN(btm_chan_num),
 					QPNP_BTM_Mn_LOW_THR_INT_EN, false);
+#endif
 		if (rc < 0) {
 			pr_err("low thr disable err:%d\n", btm_chan_num);
 			return rc;
 		}
 
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
+		rc = qpnp_adc_tm_reg_update(chip, QPNP_BTM_Mn_EN(dt_index),
+					QPNP_BTM_Mn_MEAS_EN, false);
+#else
 		rc = qpnp_adc_tm_reg_update(chip, QPNP_BTM_Mn_EN(btm_chan_num),
 					QPNP_BTM_Mn_MEAS_EN, false);
+#endif
 		if (rc < 0) {
 			pr_err("multi measurement disable failed\n");
 			return rc;
@@ -3072,6 +3126,9 @@ static int qpnp_adc_tm_probe(struct platform_device *pdev)
 		goto fail;
 	}
 	mutex_init(&chip->adc->adc_lock);
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
+	spin_lock_init(&chip->moisture_spin_lock);
+#endif
 
 	/* Register the ADC peripheral interrupt */
 	if (!chip->adc_tm_hc) {
@@ -3295,6 +3352,8 @@ static void qpnp_adc_tm_shutdown(struct platform_device *pdev)
 	int rc = 0, i = 0;
 	u8 reg_val = 0, status1 = 0, en_ctl1 = 0;
 
+	pr_err("%s\n", __func__);
+
 	if (!chip->adc_tm_hc) {
 		/* Set measurement in single measurement mode */
 		reg_val = ADC_OP_NORMAL_MODE << QPNP_OP_MODE_SHIFT;
@@ -3348,6 +3407,9 @@ static int qpnp_adc_tm_suspend_noirq(struct device *dev)
 	struct qpnp_adc_tm_chip *chip = dev_get_drvdata(dev);
 
 	if (atomic_read(&chip->wq_cnt) != 0) {
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
+		pr_err("wq_cnt: %d\n", atomic_read(&chip->wq_cnt));
+#endif
 		pr_err(
 			"Aborting suspend, adc_tm notification running while suspending\n");
 		return -EBUSY;

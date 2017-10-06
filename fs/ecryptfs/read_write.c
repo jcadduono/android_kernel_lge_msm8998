@@ -146,7 +146,7 @@ int ecryptfs_write(struct inode *ecryptfs_inode, char *data, loff_t offset,
 							 ecryptfs_page_idx);
 		if (IS_ERR(ecryptfs_page)) {
 			rc = PTR_ERR(ecryptfs_page);
-			printk(KERN_ERR "%s: Error getting page at "
+			ecryptfs_printk(KERN_ERR, "%s: Error getting page at "
 			       "index [%ld] from eCryptfs inode "
 			       "mapping; rc = [%d]\n", __func__,
 			       ecryptfs_page_idx, rc);
@@ -188,7 +188,7 @@ int ecryptfs_write(struct inode *ecryptfs_inode, char *data, loff_t offset,
 						data_offset);
 		page_cache_release(ecryptfs_page);
 		if (rc) {
-			printk(KERN_ERR "%s: Error encrypting "
+			ecryptfs_printk(KERN_ERR, "%s: Error encrypting "
 			       "page; rc = [%d]\n", __func__, rc);
 			goto out;
 		}
@@ -202,7 +202,7 @@ int ecryptfs_write(struct inode *ecryptfs_inode, char *data, loff_t offset,
 			rc2 = ecryptfs_write_inode_size_to_metadata(
 								ecryptfs_inode);
 			if (rc2) {
-				printk(KERN_ERR	"Problem with "
+				ecryptfs_printk(KERN_ERR, "Problem with "
 				       "ecryptfs_write_inode_size_to_metadata; "
 				       "rc = [%d]\n", rc2);
 				if (!rc)

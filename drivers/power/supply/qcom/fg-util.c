@@ -15,6 +15,13 @@
 void fg_circ_buf_add(struct fg_circ_buf *buf, int val)
 {
 	buf->arr[buf->head] = val;
+
+#ifdef CONFIG_LGE_PM
+	if ( buf->arr[buf->max] < val )
+		buf->max = buf->head;
+	if ( buf->arr[buf->min] > val )
+		buf->min = buf->head;
+#endif
 	buf->head = (buf->head + 1) % ARRAY_SIZE(buf->arr);
 	buf->size = min(++buf->size, (int)ARRAY_SIZE(buf->arr));
 }
@@ -22,20 +29,55 @@ void fg_circ_buf_add(struct fg_circ_buf *buf, int val)
 void fg_circ_buf_clr(struct fg_circ_buf *buf)
 {
 	memset(buf, 0, sizeof(*buf));
+#ifdef CONFIG_LGE_PM
+	buf->is_fast = 1;
+	buf->need_uevent = 1;
+#endif
 }
 
 int fg_circ_buf_avg(struct fg_circ_buf *buf, int *avg)
 {
 	s64 result = 0;
 	int i;
+#ifdef CONFIG_LGE_PM
+	int diff_avg_min, diff_max_avg = 0;
+	int chk_val=125000;
 
+	if (buf->size < 20)
+		return -ENODATA;
+#else
 	if (buf->size == 0)
 		return -ENODATA;
+#endif
 
 	for (i = 0; i < buf->size; i++)
 		result += buf->arr[i];
 
 	*avg = div_s64(result, buf->size);
+
+#ifdef CONFIG_LGE_PM
+	diff_max_avg = (buf->arr[buf->max]) - *avg;
+	diff_avg_min = *avg - (buf->arr[buf->min]);
+
+	if (abs(*avg) >  550000 && abs(*avg) <= 1050000 )
+		chk_val = 150000;
+	if (abs(*avg) > 1050000 && abs(*avg) <= 2050000 )
+		chk_val = 200000;
+	if (abs(*avg) > 2050000 && abs(*avg) <= 3050000 )
+		chk_val = 250000;
+	if (abs(*avg) > 3050000 )
+		chk_val = 300000;
+
+	if ( buf->size < 40 && min(diff_max_avg, diff_avg_min) > chk_val) {
+		pr_info("fg: %s: drop...avg=%d, diff=%d, chk=%d\n", __func__,
+			*avg, min(diff_max_avg, diff_avg_min), chk_val);
+		fg_circ_buf_clr(buf);
+		return -ENODATA;
+	}
+
+	buf->is_fast = 0;
+#endif
+
 	return 0;
 }
 

@@ -1,0 +1,69 @@
+qcom,qdm_2260mAh{
+	qcom, = <21>;
+	/* #2622130_LGE_Lucy_2260mAh_averaged_MasterSlave_Sept30th2016*/
+	qcom,max-voltage-uv = <4350000>;
+	qcom,nom-batt-capacity-mah = <2260>;
+	qcom,batt-id-kohm = <200>;
+	qcom,battery-beta = <4250>;
+	qcom,battery-type = "fg-gen3-batterydata-qdm-2260mah";
+	qcom,checksum = <0x6E43>;
+	qcom,gui-version = "PMI8998GUI - 2.0.0.49";
+	qcom,fg-profile-data = [
+		 73 1F AF 05
+		 6F 0A 9D FC
+		 8E 1D FA 06
+		 B0 12 B9 1D
+		 CD 18 C8 22
+		 C4 45 6E 52
+		 55 00 00 00
+		 0F 00 00 00
+		 00 00 02 B4
+		 CA CD 3A BB
+		 22 00 08 00
+		 7B F2 A5 EC
+		 93 FD D9 EB
+		 4B F2 12 12
+		 6D 06 F8 32
+		 1B 06 09 20
+		 27 00 14 00
+		 F4 1D 5F EC
+		 1F 02 CE EC
+		 E4 1C 98 02
+		 E8 0C F0 0A
+		 EB 1A 6E 1A
+		 13 35 57 42
+		 70 00 00 00
+		 12 00 00 00
+		 00 00 82 CC
+		 01 00 A4 C2
+		 1B 00 00 00
+		 7B F2 A5 EC
+		 07 F4 DB EA
+		 63 DD 2A 03
+		 47 02 80 1A
+		 A8 33 CC FF
+		 07 10 00 00
+		 BA 08 66 46
+		 1B 00 40 00
+		 EE 01 0A FA
+		 FF 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+	];
+};

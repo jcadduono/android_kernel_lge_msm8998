@@ -48,6 +48,9 @@
 #include "../wcd9xxx-resmgr-v2.h"
 #include "../wcdcal-hwdep.h"
 #include "wcd934x-dsd.h"
+#ifdef CONFIG_MACH_LGE // add switch dev for SAR backoff
+#include <linux/switch.h>
+#endif
 
 #define WCD934X_RATES_MASK (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |\
 			    SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_48000 |\
@@ -137,6 +140,7 @@ static const struct snd_kcontrol_new name##_mux = \
 #define  CF_MIN_3DB_75HZ		0x1
 #define  CF_MIN_3DB_150HZ		0x2
 
+#define  SB_OF_UF_MAX_RETRY_CNT		5
 #define CPE_ERR_WDOG_BITE BIT(0)
 #define CPE_FATAL_IRQS CPE_ERR_WDOG_BITE
 
@@ -654,6 +658,12 @@ struct tavil_priv {
 	struct tavil_idle_detect_config idle_det_cfg;
 
 	int power_active_ref;
+
+	unsigned short slim_tx_of_uf_cnt[WCD934X_TX_MAX][SB_PORT_ERR_MAX];
+
+#ifdef CONFIG_MACH_LGE // add switch dev for SAR backoff
+	struct switch_dev sar;
+#endif
 };
 
 static const struct tavil_reg_mask_val tavil_spkr_default[] = {
@@ -1663,6 +1673,7 @@ static int tavil_codec_enable_slimtx(struct snd_soc_dapm_widget *w,
 	struct tavil_priv *tavil_p = snd_soc_codec_get_drvdata(codec);
 	struct wcd9xxx_codec_dai_data *dai;
 	struct wcd9xxx *core;
+	struct wcd9xxx_ch *ch;
 	int ret = 0;
 
 	dev_dbg(codec->dev,
@@ -1694,6 +1705,13 @@ static int tavil_codec_enable_slimtx(struct snd_soc_dapm_widget *w,
 			dev_dbg(codec->dev, "%s: Disconnect RX port, ret = %d\n",
 				 __func__, ret);
 		}
+		/* reset overflow and underflow counts */
+		list_for_each_entry(ch, &dai->wcd9xxx_ch_list, list) {
+				tavil_p->slim_tx_of_uf_cnt[ch->port][SB_PORT_ERR_OF]
+										= 0;
+				tavil_p->slim_tx_of_uf_cnt[ch->port][SB_PORT_ERR_UF]
+										= 0;
+		}
 		break;
 	}
 	return ret;
@@ -1708,6 +1726,7 @@ static int tavil_codec_enable_slimvi_feedback(struct snd_soc_dapm_widget *w,
 	struct tavil_priv *tavil_p = NULL;
 	int ret = 0;
 	struct wcd9xxx_codec_dai_data *dai = NULL;
+	struct wcd9xxx_ch *ch;
 
 	codec = snd_soc_dapm_to_codec(w->dapm);
 	tavil_p = snd_soc_codec_get_drvdata(codec);
@@ -1799,6 +1818,13 @@ static int tavil_codec_enable_slimvi_feedback(struct snd_soc_dapm_widget *w,
 				dai->grph);
 			dev_dbg(codec->dev, "%s: Disconnect TX port, ret = %d\n",
 				__func__, ret);
+		}
+		/* reset over.f and under.f counts */
+		list_for_each_entry(ch, &dai->wcd9xxx_ch_list, list) {
+				tavil_p->slim_tx_of_uf_cnt[ch->port][SB_PORT_ERR_OF]
+										= 0;
+				tavil_p->slim_tx_of_uf_cnt[ch->port][SB_PORT_ERR_UF]
+										= 0;
 		}
 		if (test_bit(VI_SENSE_1, &tavil_p->status_mask)) {
 			/* Disable V&I sensing */
@@ -1917,6 +1943,10 @@ static int tavil_codec_enable_ear_pa(struct snd_soc_dapm_widget *w,
 	int ret = 0;
 	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
 
+#ifdef CONFIG_MACH_LGE
+	struct tavil_priv *tavil = snd_soc_codec_get_drvdata(codec);
+#endif
+
 	dev_dbg(codec->dev, "%s %s %d\n", __func__, w->name, event);
 
 	switch (event) {
@@ -1925,6 +1955,10 @@ static int tavil_codec_enable_ear_pa(struct snd_soc_dapm_widget *w,
 		 * 5ms sleep is required after PA is enabled as per
 		 * HW requirement
 		 */
+#ifdef CONFIG_MACH_LGE
+		pr_info("%s : enable SAR backoff\n", __func__);
+		switch_set_state(&tavil->sar, 1);
+#endif
 		usleep_range(5000, 5500);
 		snd_soc_update_bits(codec, WCD934X_CDC_RX0_RX_PATH_CTL,
 				    0x10, 0x00);
@@ -1940,6 +1974,10 @@ static int tavil_codec_enable_ear_pa(struct snd_soc_dapm_widget *w,
 		 * 5ms sleep is required after PA is disabled as per
 		 * HW requirement
 		 */
+#ifdef CONFIG_MACH_LGE
+		pr_info("%s : disable SAR backoff\n", __func__);
+		switch_set_state(&tavil->sar, 0);
+#endif
 		usleep_range(5000, 5500);
 
 		if (!(strcmp(w->name, "ANC EAR PA"))) {
@@ -8169,6 +8207,21 @@ static int tavil_dig_core_power_collapse(struct tavil_priv *tavil,
 		return 0;
 
 	mutex_lock(&tavil->power_lock);
+#ifdef CONFIG_MACH_LGE
+	if (req_state == POWER_COLLAPSE)
+	{
+		if (tavil->power_active_ref <= 0) {
+			dev_err(tavil->dev, "%s: No power_active_ref is existed %d\n",
+				__func__,tavil->power_active_ref);
+			goto unlock_mutex;
+		}
+		tavil->power_active_ref--;
+	}
+	else if (req_state == POWER_RESUME)
+		tavil->power_active_ref++;
+	else
+		goto unlock_mutex;
+#else //QCT original
 	if (req_state == POWER_COLLAPSE)
 		tavil->power_active_ref--;
 	else if (req_state == POWER_RESUME)
@@ -8181,7 +8234,7 @@ static int tavil_dig_core_power_collapse(struct tavil_priv *tavil,
 			__func__);
 		goto unlock_mutex;
 	}
-
+#endif
 	if (req_state == POWER_COLLAPSE) {
 		if (tavil->power_active_ref == 0) {
 			schedule_delayed_work(&tavil->power_gate_work,
@@ -8723,14 +8776,41 @@ static irqreturn_t tavil_slimbus_irq(int irq, void *data)
 		if (val & WCD934X_SLIM_IRQ_UNDERFLOW)
 			dev_err_ratelimited(tavil->dev, "%s: underflow error on %s port %d, value %x\n",
 			   __func__, (tx ? "TX" : "RX"), port_id, val);
+
+		if (tx) {
+			/* inc count */
+			if (val & WCD934X_SLIM_IRQ_OVERFLOW) {
+				tavil->slim_tx_of_uf_cnt[port_id]
+							[SB_PORT_ERR_OF]++;
+				dev_err_ratelimited(tavil->dev, "%s: tx port(%d) overflow cnt: %d\n",
+					__func__, port_id,
+					tavil->slim_tx_of_uf_cnt[port_id]
+							[SB_PORT_ERR_OF]);
+			}
+			if (val & WCD934X_SLIM_IRQ_UNDERFLOW) {
+				tavil->slim_tx_of_uf_cnt[port_id]
+							[SB_PORT_ERR_UF]++;
+				dev_err_ratelimited(tavil->dev, "%s: tx port(%d) underflow cnt: %d\n",
+					__func__, port_id,
+					tavil->slim_tx_of_uf_cnt[port_id]
+							[SB_PORT_ERR_UF]);
+			}
+		}
+
 		if ((val & WCD934X_SLIM_IRQ_OVERFLOW) ||
 			(val & WCD934X_SLIM_IRQ_UNDERFLOW)) {
 			if (!tx)
 				reg = WCD934X_SLIM_PGD_PORT_INT_RX_EN0 +
 					(port_id / 8);
-			else
+			else if ((tavil->slim_tx_of_uf_cnt[port_id]
+					[SB_PORT_ERR_OF] > SB_OF_UF_MAX_RETRY_CNT) ||
+					(tavil->slim_tx_of_uf_cnt[port_id]
+					[SB_PORT_ERR_UF] > SB_OF_UF_MAX_RETRY_CNT))
 				reg = WCD934X_SLIM_PGD_PORT_INT_TX_EN0 +
 					(port_id / 8);
+			else
+				goto skip_port_disable;
+
 			int_val = wcd9xxx_interface_reg_read(
 				tavil->wcd9xxx, reg);
 			if (int_val & (1 << (port_id % 8))) {
@@ -8739,6 +8819,7 @@ static irqreturn_t tavil_slimbus_irq(int irq, void *data)
 					reg, int_val);
 			}
 		}
+skip_port_disable:
 		if (val & WCD934X_SLIM_IRQ_PORT_CLOSED) {
 			/*
 			 * INT SOURCE register starts from RX to TX
@@ -10015,6 +10096,15 @@ static int tavil_probe(struct platform_device *pdev)
 		goto err_cdc_reg;
 	}
 	schedule_work(&tavil->tavil_add_child_devices_work);
+
+#ifdef CONFIG_MACH_LGE
+	tavil->sar.name = "sar_backoff";
+	ret = switch_dev_register(&tavil->sar);
+	if (ret < 0) {
+		pr_err("%s : failed to register switch device for SAR backoff\n", __func__);
+		switch_dev_unregister(&tavil->sar);
+	}
+#endif
 
 	return ret;
 

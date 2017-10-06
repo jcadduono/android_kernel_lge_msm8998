@@ -1834,6 +1834,9 @@ int gsi_stop_channel(unsigned long chan_hdl)
 	int res;
 	uint32_t val;
 	struct gsi_chan_ctx *ctx;
+	uint32_t irq_stts;
+	uint32_t hw_ch_state;
+	unsigned long flags;
 
 	if (!gsi_ctx) {
 		pr_err("%s:%d gsi context not allocated\n", __func__, __LINE__);
@@ -1858,6 +1861,16 @@ int gsi_stop_channel(unsigned long chan_hdl)
 		GSIERR("bad state %d\n", ctx->state);
 		return -GSI_STATUS_UNSUPPORTED_OP;
 	}
+
+	spin_lock_irqsave(&gsi_ctx->slock, flags);
+	hw_ch_state = gsi_readl(gsi_ctx->base + GSI_EE_n_GSI_CH_k_CNTXT_0_OFFS(chan_hdl, gsi_ctx->per.ee));
+	hw_ch_state = (hw_ch_state &
+		GSI_EE_n_GSI_CH_k_CNTXT_0_CHSTATE_BMSK) >>
+		GSI_EE_n_GSI_CH_k_CNTXT_0_CHSTATE_SHFT;
+	GSIERR("hw_ch_state = 0x%x\n", hw_ch_state);
+	irq_stts = gsi_readl(gsi_ctx->base + GSI_EE_n_CNTXT_TYPE_IRQ_OFFS(gsi_ctx->per.ee));
+	GSIERR("pending irq = 0x%x\n", irq_stts);
+	spin_unlock_irqrestore(&gsi_ctx->slock, flags);
 
 	mutex_lock(&gsi_ctx->mlock);
 	reinit_completion(&ctx->compl);

@@ -1,0 +1,71 @@
+/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+/dts-v1/;
+
+#include "../../../qcom/msm8998-v2.dtsi"
+#include "msm8998-lucy_dcm_jp.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. MSM8998 v2 MTP";
+	compatible = "qcom,msm8998-mtp", "qcom,msm8998", "qcom,mtp";
+	qcom,board-id = <0x308 0>;
+};
+
+
+&mdss_dsi0 {
+        qcom,dsi-pref-prim-pan = <&dsi_sw49408_dsc_qhd_cmd>;
+
+        lge,extra-gpio-names = "vddio", "vpnl";
+        lge,gpio-vddio = <&tlmm 76 0>;
+        lge,gpio-vpnl = <&tlmm 75 0>;
+};
+
+&soc {
+	tlmm: pinctrl@03400000 {
+		compatible = "qcom,msmcobalt-pinctrl";
+		reg = <0x03400000 0xc00000>;
+		interrupts = <0 208 0>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+
+		pmx_mdss: pmx_mdss {
+			mdss_dsi_active: mdss_dsi_active {
+				mux {
+					pins = "gpio35", "gpio91", "gpio75", "gpio76";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio35", "gpio91", "gpio75", "gpio76";
+					drive-strength = <8>; /* 8 mA */
+					bias-disable = <0>; /* no pull */
+				};
+			};
+			mdss_dsi_suspend: mdss_dsi_suspend {
+				mux {
+					pins = "gpio35", "gpio91", "gpio75", "gpio76";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio35", "gpio91", "gpio75", "gpio76";
+					drive-strength = <2>; /* 2 mA */
+					bias-pull-down; /* pull down */
+				};
+			};
+		};
+	};
+};

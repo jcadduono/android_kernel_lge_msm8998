@@ -25,6 +25,10 @@
 
 #define LSM_MAX_NUM_CHANNELS 8
 
+#define ADM_LSM_PORT_ID 0xADCB
+
+#define LSM_MAX_NUM_CHANNELS 8
+
 typedef void (*lsm_app_cb)(uint32_t opcode, uint32_t token,
 		       uint32_t *payload, void *priv);
 

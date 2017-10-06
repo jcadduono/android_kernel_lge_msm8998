@@ -11,7 +11,12 @@
  *
  */
 
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+#define pr_fmt(fmt)     "[DisplayPort] %s: " fmt, __func__
+#else
 #define pr_fmt(fmt)	"%s: " fmt, __func__
+#endif
+
 
 #include <linux/io.h>
 #include <linux/delay.h>
@@ -745,11 +750,11 @@ void mdss_dp_timing_cfg(struct dss_io_data *ctrl_io,
 	u32 total_ver, total_hor;
 	u32 data;
 
-	pr_debug("width=%d hporch= %d %d %d\n",
+	pr_info("width=%d hporch= %d %d %d\n",
 		pinfo->xres, pinfo->lcdc.h_back_porch,
 		pinfo->lcdc.h_front_porch, pinfo->lcdc.h_pulse_width);
 
-	pr_debug("height=%d vporch= %d %d %d\n",
+	pr_info("height=%d vporch= %d %d %d\n",
 		pinfo->yres, pinfo->lcdc.v_back_porch,
 		pinfo->lcdc.v_front_porch, pinfo->lcdc.v_pulse_width);
 
@@ -786,56 +791,19 @@ void mdss_dp_timing_cfg(struct dss_io_data *ctrl_io,
 	writel_relaxed(data, ctrl_io->base + DP_ACTIVE_HOR_VER);
 }
 
-static bool use_fixed_nvid(struct mdss_dp_drv_pdata *dp)
-{
-	/*
-	 * For better interop experience, used a fixed NVID=0x8000
-	 * whenever connected to a VGA dongle downstream
-	 */
-	return mdss_dp_is_dsp_type_vga(dp);
-}
-
-void mdss_dp_sw_config_msa(struct mdss_dp_drv_pdata *dp)
+void mdss_dp_sw_config_msa(struct dss_io_data *ctrl_io,
+				char lrate, struct dss_io_data *dp_cc_io)
 {
 	u32 pixel_m, pixel_n;
 	u32 mvid, nvid;
-	u64 mvid_calc;
-	u32 const nvid_fixed = 0x8000;
-	struct dss_io_data *ctrl_io = &dp->ctrl_io;
-	struct dss_io_data *dp_cc_io = &dp->dp_cc_io;
-	u32 lrate_kbps;
-	u64 stream_rate_khz;
 
-	if (use_fixed_nvid(dp)) {
-		pr_debug("use fixed NVID=0x%x\n", nvid_fixed);
-		nvid = nvid_fixed;
-
-		lrate_kbps = dp->link_rate * DP_LINK_RATE_MULTIPLIER /
-			DP_KHZ_TO_HZ;
-		stream_rate_khz = div_u64(dp->panel_data.panel_info.clk_rate,
-			DP_KHZ_TO_HZ);
-		pr_debug("link rate=%dkbps, stream_rate_khz=%lluKhz",
-			lrate_kbps, stream_rate_khz);
-
-		/*
-		 * For intermediate results, use 64 bit arithmetic to avoid
-		 * loss of precision.
-		 */
-		mvid_calc = stream_rate_khz * nvid;
-		mvid_calc = div_u64(mvid_calc, lrate_kbps);
-
-		/*
-		 * truncate back to 32 bits as this final divided value will
-		 * always be within the range of a 32 bit unsigned int.
-		 */
-		mvid = (u32) mvid_calc;
-	} else {
 		pixel_m = readl_relaxed(dp_cc_io->base + MMSS_DP_PIXEL_M);
 		pixel_n = readl_relaxed(dp_cc_io->base + MMSS_DP_PIXEL_N);
-		pr_debug("pixel_m=0x%x, pixel_n=0x%x\n", pixel_m, pixel_n);
+	pr_debug("pixel_m=0x%x, pixel_n=0x%x\n",
+					pixel_m, pixel_n);
+
 		mvid = (pixel_m & 0xFFFF) * 5;
 		nvid = (0xFFFF & (~pixel_n)) + (pixel_m & 0xFFFF);
-	}
 
 	pr_debug("mvid=0x%x, nvid=0x%x\n", mvid, nvid);
 	writel_relaxed(mvid, ctrl_io->base + DP_SOFTWARE_MVID);

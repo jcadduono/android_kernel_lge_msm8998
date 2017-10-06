@@ -129,6 +129,15 @@ static uint32_t *msm_mpm_falling_edge;
 static uint32_t *msm_mpm_rising_edge;
 static uint32_t *msm_mpm_polarity;
 
+#ifdef CONFIG_LGE_PM
+enum {
+	/* 0x80 : runtime activation for checking xo shutdown */
+	LGE_MPM_DEBUG_POLL_IRQ_GPIO = BIT(7),
+};
+
+static int msm_mpm_debug_mask = 1;
+#endif
+
 enum mpm_state {
 	MSM_MPM_GIC_IRQ_MAPPING_DONE = BIT(0),
 	MSM_MPM_GPIO_IRQ_MAPPING_DONE = BIT(1),
@@ -495,6 +504,57 @@ int msm_mpm_set_pin_type(unsigned int pin, unsigned int flow_type)
 	return 0;
 }
 
+#ifdef CONFIG_LGE_PM
+struct delayed_work check_w;
+static void check_work(struct work_struct *work)
+{
+	bool allow = true;
+	bool allow_irq = true;
+	bool allow_gpio = true;
+
+	pr_err("-----------------------\n");
+	allow_irq = msm_mpm_irqs_detectable(true);
+	allow_gpio = msm_mpm_gpio_irqs_detectable(true);
+
+	if (allow_irq && allow_gpio)
+		allow = true;
+	else
+		allow = false;
+
+	pr_err("allow = %d -------------\n", allow);
+
+	if (msm_mpm_debug_mask & LGE_MPM_DEBUG_POLL_IRQ_GPIO)
+		schedule_delayed_work(&check_w, msecs_to_jiffies(3000));
+	else
+		pr_err("%s : stop LGE_MPM_DEBUG_POLL_IRQ_GPIO\n",
+				__func__);
+}
+
+static int __ref mpm_debug_set(const char *val,
+		const struct kernel_param *kp)
+{
+	int ret = 0;
+	int old = msm_mpm_debug_mask;
+
+	ret = param_set_int(val, kp);
+
+	pr_err("%s : debug_mask %d -> %d\n",
+			__func__, old, msm_mpm_debug_mask);
+
+	if (msm_mpm_debug_mask & LGE_MPM_DEBUG_POLL_IRQ_GPIO)
+		schedule_delayed_work(&check_w,
+				msecs_to_jiffies(10000));
+	return ret;
+}
+
+static struct kernel_param_ops module_ops = {
+	.set = mpm_debug_set,
+	.get = param_get_int,
+};
+module_param_cb(debug_mask, &module_ops, &msm_mpm_debug_mask,
+		S_IRUGO | S_IWUSR | S_IWGRP);
+#endif
+
 static bool msm_mpm_interrupts_detectable(int d, bool from_idle)
 {
 	unsigned long *irq_bitmap;
@@ -761,6 +821,11 @@ static int msm_mpm_dev_probe(struct platform_device *pdev)
 	}
 
 	msm_mpm_initialized |= MSM_MPM_DEVICE_PROBED;
+
+#ifdef CONFIG_LGE_PM
+	INIT_DELAYED_WORK(&check_w, check_work);
+#endif
+
 	return 0;
 }
 

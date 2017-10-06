@@ -54,6 +54,7 @@ do { \
 	} \
 } while (0) \
 
+extern int enable_log;
 static LIST_HEAD(svc_event_nb_list);
 static DEFINE_MUTEX(svc_event_nb_list_lock);
 
@@ -1704,6 +1705,8 @@ int qmi_recv_msg(struct qmi_handle *handle)
 		break;
 
 	case QMI_INDICATION_CONTROL_FLAG:
+		if(enable_log)
+			pr_info("<Debug> before indication\n");
 		rc = handle_qmi_indication(handle, recv_msg, msg_id, msg_len);
 		break;
 

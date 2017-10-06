@@ -1293,6 +1293,10 @@ unsigned long do_mmap(struct file *file, unsigned long addr,
 	struct mm_struct *mm = current->mm;
 
 	*populate = 0;
+#ifdef CONFIG_SDCARD_FS
+	while (file && (file->f_mode & FMODE_NOMAPPABLE))
+		file = file->f_op->get_lower_file(file);
+#endif
 
 	if (!len)
 		return -EINVAL;

@@ -73,6 +73,13 @@ config SMB138X_CHARGER
 	  The driver reports the charger status via the power supply framework.
 	  A charger status change triggers an IRQ via the device STAT pin.
 
+config BQ25898S_CHARGER
+	tristate "TI BQ25898S battery charger driver"
+	default n
+	depends on MFD_I2C_PMIC
+	help
+	  Say Y to enable support for the TI BQ25898S battery charger.
+
 config QPNP_QNOVO
 	bool "QPNP QNOVO driver"
 	depends on MFD_SPMI_PMIC
@@ -82,4 +89,96 @@ config QPNP_QNOVO
 	  module. It also allows userspace code to read diagnostics of voltage
 	  and current measured during certain phases of the pulses.
 
+config LGE_PM_DEBUG
+	tristate "Support LGE PM Debug Feature"
+	default n
+	depends on MACH_LGE
+	help
+	  LGE PM Debug Feature
+
+config LGE_PM_SOC_SCALING
+	bool "Battery Capacity Scaling"
+	depends on LGE_PM
+	help
+	  Say Y here to enable the battery capacity to be scaled.
+
+config LGE_PM_BATTID_CONNECTED_GND
+	bool "Fake batt ID"
+	depends on LGE_PM
+	help
+	  Say Y only batt_id was directly connected to GND
+
+config LGE_PM_FG_AGE
+	tristate "QPNP FG battery age mode"
+	depends on LGE_PM
+	default n
+	help
+	 Say Y to enable to battery age mode for KDDI or DCM.
+	 age value is 1 = very good condition
+	 age value is 2 = good condition
+	 age value is 3 = bad condition
+
+config LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+	bool "LGE battery cycle based chg voltage change feature"
+	default n
+	depends on LGE_PM
+	help
+	  lge battery extending feature
+
+config LGE_PM_CYCLE_BASED_WEIGHT
+	bool "LGE battery cycle based weight feature"
+	depends on LGE_PM
+	depends on LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+	default n
+	help
+	  lge battery extending feature with cycle weight
+
+config LGE_PM_USE_FAKE_BATT_TEMP_CTRL
+	bool "Support Fake battery temp update"
+	default n
+	help
+	  Say Y to enable support for the fake battery temperature update.
+
+config LGE_PM_FACTORY_TESTMODE
+	bool "Support factory testmode for AT Command"
+	depends on LGE_PM
+	default n
+	help
+	  Say Y to enable factory testmode in qpnp-smbcharger
+
+config LGE_PM_WEAK_BATT_PACK
+	bool "support for weak battery pack"
+	default n
+	depends on LGE_PM
+	help
+	  support for weak battery pack
+
+config LGE_PM_STEP_CHARGING
+	bool "Support step charging"
+	depends on LGE_PM
+	default n
+	help
+	  Say Y to enable step charging
+
+config LGE_PM_CHARGERLOGO_WAIT_FOR_FG_INIT
+	bool "Wait for FG init in LGE Chargerlogo"
+	default n
+	depends on LGE_PM_DEBUG
+	depends on QPNP_FG_GEN3
+	help
+	  It is wait for FG init in LGE Chargerlogo.
+
+config LGE_PM_INOV_GEN3_SYSFS_SUPPORT
+	bool "INOV GEN3 Support for QCT Platform"
+	default n
+	depends on ARCH_MSM8998
+	help
+	  PMI8998 Temperature Sensor read interface at sysfs
+
+config LGE_PM_CC_PROTECT
+	bool "Support protect cc pin"
+	depends on LGE_PM
+	default n
+	help
+	  Say Y to enable protect cc pin.
 endmenu

@@ -46,7 +46,7 @@ ecryptfs_miscdev_poll(struct file *file, poll_table *pt)
 
 	mutex_lock(&daemon->mux);
 	if (daemon->flags & ECRYPTFS_DAEMON_ZOMBIE) {
-		printk(KERN_WARNING "%s: Attempt to poll on zombified "
+		ecryptfs_printk(KERN_WARNING, "%s: Attempt to poll on zombified "
 		       "daemon\n", __func__);
 		goto out_unlock_daemon;
 	}
@@ -87,7 +87,7 @@ ecryptfs_miscdev_open(struct inode *inode, struct file *file)
 	}
 	rc = ecryptfs_spawn_daemon(&daemon, file);
 	if (rc) {
-		printk(KERN_ERR "%s: Error attempting to spawn daemon; "
+		ecryptfs_printk(KERN_ERR, "%s: Error attempting to spawn daemon; "
 		       "rc = [%d]\n", __func__, rc);
 		goto out_unlock_daemon_list;
 	}
@@ -132,7 +132,7 @@ ecryptfs_miscdev_release(struct inode *inode, struct file *file)
 	rc = ecryptfs_exorcise_daemon(daemon);
 	mutex_unlock(&ecryptfs_daemon_hash_mux);
 	if (rc) {
-		printk(KERN_CRIT "%s: Fatal error whilst attempting to "
+		ecryptfs_printk(KERN_CRIT, "%s: Fatal error whilst attempting to "
 		       "shut down daemon; rc = [%d]. Please report this "
 		       "bug.\n", __func__, rc);
 		BUG();
@@ -164,7 +164,7 @@ int ecryptfs_send_miscdev(char *data, size_t data_size,
 
 	msg = kmalloc((sizeof(*msg) + data_size), GFP_KERNEL);
 	if (!msg) {
-		printk(KERN_ERR "%s: Out of memory whilst attempting "
+		ecryptfs_printk(KERN_ERR, "%s: Out of memory whilst attempting "
 		       "to kmalloc(%zd, GFP_KERNEL)\n", __func__,
 		       (sizeof(*msg) + data_size));
 		return -ENOMEM;
@@ -238,7 +238,7 @@ ecryptfs_miscdev_read(struct file *file, char __user *buf, size_t count,
 	mutex_lock(&daemon->mux);
 	if (daemon->flags & ECRYPTFS_DAEMON_ZOMBIE) {
 		rc = 0;
-		printk(KERN_WARNING "%s: Attempt to read from zombified "
+		ecryptfs_printk(KERN_WARNING, "%s: Attempt to read from zombified "
 		       "daemon\n", __func__);
 		goto out_unlock_daemon;
 	}
@@ -279,7 +279,7 @@ check_list:
 						  &packet_length_size);
 		if (rc) {
 			rc = 0;
-			printk(KERN_WARNING "%s: Error writing packet length; "
+			ecryptfs_printk(KERN_WARNING, "%s: Error writing packet length; "
 			       "rc = [%d]\n", __func__, rc);
 			goto out_unlock_msg_ctx;
 		}
@@ -291,7 +291,7 @@ check_list:
 			+ msg_ctx->msg_size);
 	if (count < total_length) {
 		rc = 0;
-		printk(KERN_WARNING "%s: Only given user buffer of "
+		ecryptfs_printk(KERN_WARNING, "%s: Only given user buffer of "
 		       "size [%zd], but we need [%zd] to read the "
 		       "pending message\n", __func__, count, total_length);
 		goto out_unlock_msg_ctx;
@@ -342,7 +342,7 @@ static int ecryptfs_miscdev_response(struct ecryptfs_daemon *daemon, char *data,
 	int rc;
 
 	if ((sizeof(*msg) + msg->data_len) != data_size) {
-		printk(KERN_WARNING "%s: (sizeof(*msg) + msg->data_len) = "
+		ecryptfs_printk(KERN_WARNING, "%s: (sizeof(*msg) + msg->data_len) = "
 		       "[%zd]; data_size = [%zd]. Invalid packet.\n", __func__,
 		       (sizeof(*msg) + msg->data_len), data_size);
 		rc = -EINVAL;
@@ -350,7 +350,7 @@ static int ecryptfs_miscdev_response(struct ecryptfs_daemon *daemon, char *data,
 	}
 	rc = ecryptfs_process_response(daemon, msg, seq);
 	if (rc)
-		printk(KERN_ERR
+		ecryptfs_printk(KERN_ERR,
 		       "Error processing response message; rc = [%d]\n", rc);
 out:
 	return rc;
@@ -382,7 +382,7 @@ ecryptfs_miscdev_write(struct file *file, const char __user *buf,
 		/* Likely a harmless MSG_HELO or MSG_QUIT - no packet length */
 		goto memdup;
 	} else if (count < MIN_MSG_PKT_SIZE || count > MAX_MSG_PKT_SIZE) {
-		printk(KERN_WARNING "%s: Acceptable packet size range is "
+		ecryptfs_printk(KERN_WARNING, "%s: Acceptable packet size range is "
 		       "[%d-%zu], but amount of data written is [%zu].",
 		       __func__, MIN_MSG_PKT_SIZE, MAX_MSG_PKT_SIZE, count);
 		return -EINVAL;
@@ -390,7 +390,7 @@ ecryptfs_miscdev_write(struct file *file, const char __user *buf,
 
 	if (copy_from_user(packet_size_peek, &buf[PKT_LEN_OFFSET],
 			   sizeof(packet_size_peek))) {
-		printk(KERN_WARNING "%s: Error while inspecting packet size\n",
+		ecryptfs_printk(KERN_WARNING, "%s: Error while inspecting packet size\n",
 		       __func__);
 		return -EFAULT;
 	}
@@ -398,14 +398,14 @@ ecryptfs_miscdev_write(struct file *file, const char __user *buf,
 	rc = ecryptfs_parse_packet_length(packet_size_peek, &packet_size,
 					  &packet_size_length);
 	if (rc) {
-		printk(KERN_WARNING "%s: Error parsing packet length; "
+		ecryptfs_printk(KERN_WARNING, "%s: Error parsing packet length; "
 		       "rc = [%zd]\n", __func__, rc);
 		return rc;
 	}
 
 	if ((PKT_TYPE_SIZE + PKT_CTR_SIZE + packet_size_length + packet_size)
 	    != count) {
-		printk(KERN_WARNING "%s: Invalid packet size [%zu]\n", __func__,
+		ecryptfs_printk(KERN_WARNING, "%s: Invalid packet size [%zu]\n", __func__,
 		       packet_size);
 		return -EINVAL;
 	}
@@ -413,7 +413,7 @@ ecryptfs_miscdev_write(struct file *file, const char __user *buf,
 memdup:
 	data = memdup_user(buf, count);
 	if (IS_ERR(data)) {
-		printk(KERN_ERR "%s: memdup_user returned error [%ld]\n",
+		ecryptfs_printk(KERN_ERR, "%s: memdup_user returned error [%ld]\n",
 		       __func__, PTR_ERR(data));
 		return PTR_ERR(data);
 	}
@@ -421,7 +421,7 @@ memdup:
 	case ECRYPTFS_MSG_RESPONSE:
 		if (count < (MIN_MSG_PKT_SIZE
 			     + sizeof(struct ecryptfs_message))) {
-			printk(KERN_WARNING "%s: Minimum acceptable packet "
+			ecryptfs_printk(KERN_WARNING, "%s: Minimum acceptable packet "
 			       "size is [%zd], but amount of data written is "
 			       "only [%zd]. Discarding response packet.\n",
 			       __func__,
@@ -436,7 +436,7 @@ memdup:
 				&data[PKT_LEN_OFFSET + packet_size_length],
 				packet_size, seq);
 		if (rc) {
-			printk(KERN_WARNING "%s: Failed to deliver miscdev "
+			ecryptfs_printk(KERN_WARNING, "%s: Failed to deliver miscdev "
 			       "response to requesting operation; rc = [%zd]\n",
 			       __func__, rc);
 			goto out_free;
@@ -492,7 +492,7 @@ int __init ecryptfs_init_ecryptfs_miscdev(void)
 	atomic_set(&ecryptfs_num_miscdev_opens, 0);
 	rc = misc_register(&ecryptfs_miscdev);
 	if (rc)
-		printk(KERN_ERR "%s: Failed to register miscellaneous device "
+		ecryptfs_printk(KERN_ERR, "%s: Failed to register miscellaneous device "
 		       "for communications with userspace daemons; rc = [%d]\n",
 		       __func__, rc);
 	return rc;

@@ -631,6 +631,8 @@ void migrate_page_copy(struct page *newpage, struct page *page)
 		SetPageActive(newpage);
 	} else if (TestClearPageUnevictable(page))
 		SetPageUnevictable(newpage);
+	if (PageWorkingset(page))
+		SetPageWorkingset(newpage);
 	if (PageChecked(page))
 		SetPageChecked(newpage);
 	if (PageMappedToDisk(page))
@@ -1952,6 +1954,8 @@ fail_putback:
 		mmu_notifier_invalidate_range_end(mm, mmun_start, mmun_end);
 
 		/* Reverse changes made by migrate_page_copy() */
+		if (TestClearPageWorkingset(new_page))
+			ClearPageWorkingset(page);
 		if (TestClearPageActive(new_page))
 			SetPageActive(page);
 		if (TestClearPageUnevictable(new_page))

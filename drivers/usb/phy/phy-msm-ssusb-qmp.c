@@ -75,6 +75,29 @@ struct qmp_reg_val {
 	u32 delay;
 };
 
+#ifdef CONFIG_LGE_USB_GADGET
+#define QSERDES_TX_A_TX_EMP_POST1_LVL 0x20C
+#define QSERDES_TX_B_TX_EMP_POST1_LVL 0x60C
+#define QSERDES_TX_A_TX_DRV_LVL       0x21C
+#define QSERDES_TX_B_TX_DRV_LVL       0x61C
+
+static uint32_t override_tx_a_pre_emphasis = 0;
+module_param(override_tx_a_pre_emphasis, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(override_tx_a_pre_emphasis, "Overide TX_A_PRE_EMPHASIS tuning register");
+
+static uint32_t override_tx_b_pre_emphasis = 0;
+module_param(override_tx_b_pre_emphasis, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(override_tx_b_pre_emphasis, "Overide TX_B_PRE_EMPHASIS tuning register");
+
+static uint32_t override_tx_a_swing = 0;
+module_param(override_tx_a_swing, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(override_tx_a_swing, "Override TX_A_SWING tuning register");
+
+static uint32_t override_tx_b_swing = 0;
+module_param(override_tx_b_swing, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(override_tx_b_swing, "Override TX_B_SWING tuning register");
+#endif
+
 struct msm_ssphy_qmp {
 	struct usb_phy		phy;
 	void __iomem		*base;
@@ -106,6 +129,13 @@ struct msm_ssphy_qmp {
 	int			init_seq_len;
 	unsigned int		*qmp_phy_reg_offset;
 	int			reg_offset_cnt;
+
+#ifdef CONFIG_LGE_USB_GADGET
+	uint32_t		tx_a_pre_emphasis;
+	uint32_t		tx_b_pre_emphasis;
+	uint32_t		tx_a_swing;
+	uint32_t		tx_b_swing;
+#endif
 };
 
 static const struct of_device_id msm_usb_id_table[] = {
@@ -278,6 +308,61 @@ static int configure_phy_regs(struct usb_phy *uphy,
 			usleep_range(reg->delay, reg->delay + 10);
 		reg++;
 	}
+
+#ifdef CONFIG_LGE_USB_GADGET
+        if (override_tx_a_pre_emphasis) {
+                dev_dbg(uphy->dev, "%s(), Programming TX_A_PRE_EMPHASIS"
+                                        " tuning register as: %d",
+                                        __func__,
+                                        override_tx_a_pre_emphasis);
+                writel_relaxed(override_tx_a_pre_emphasis | 0x20,
+                                phy->base + QSERDES_TX_A_TX_EMP_POST1_LVL);
+        } else {
+                if (phy->tx_a_pre_emphasis)
+                        writel_relaxed(phy->tx_a_pre_emphasis | 0x20,
+                                        phy->base + QSERDES_TX_A_TX_EMP_POST1_LVL);
+        }
+
+        if (override_tx_b_pre_emphasis) {
+                dev_dbg(uphy->dev, "%s(), Programming TX_B_PRE_EMPHASIS"
+                                        " tuning register as: %d",
+                                        __func__,
+                                        override_tx_b_pre_emphasis);
+                writel_relaxed(override_tx_b_pre_emphasis | 0x20,
+                                phy->base + QSERDES_TX_B_TX_EMP_POST1_LVL);
+        } else {
+                if (phy->tx_b_pre_emphasis)
+                        writel_relaxed(phy->tx_b_pre_emphasis | 0x20,
+                                        phy->base + QSERDES_TX_B_TX_EMP_POST1_LVL);
+        }
+
+        if (override_tx_a_swing) {
+                dev_dbg(uphy->dev, "%s(), Programming TX_A_SWING tuning"
+                                        " register as: %d",
+                                        __func__,
+                                        override_tx_a_swing);
+                writel_relaxed(override_tx_a_swing | 0x20,
+                                phy->base + QSERDES_TX_A_TX_DRV_LVL);
+        } else {
+                if (phy->tx_a_swing)
+                        writel_relaxed(phy->tx_a_swing | 0x20,
+                                        phy->base + QSERDES_TX_A_TX_DRV_LVL);
+        }
+
+        if (override_tx_b_swing) {
+                dev_dbg(uphy->dev, "%s(), Programming TX_B_SWING tuning"
+                                        " register as: %d",
+                                        __func__,
+                                        override_tx_b_swing);
+                writel_relaxed(override_tx_b_swing | 0x20,
+                                phy->base + QSERDES_TX_B_TX_DRV_LVL);
+        } else {
+                if (phy->tx_b_swing)
+                        writel_relaxed(phy->tx_b_swing | 0x20,
+                                        phy->base + QSERDES_TX_B_TX_DRV_LVL);
+        }
+#endif
+
 	return 0;
 }
 
@@ -364,6 +449,24 @@ static int msm_ssphy_qmp_init(struct usb_phy *uphy)
 					phy->phy_reg[USB3_PHY_PCS_STATUS]));
 		return -EBUSY;
 	};
+
+#ifdef CONFIG_LGE_USB_GADGET
+	dev_dbg(uphy->dev, "%s, TX_A_PRE_EMPHASIS tuning register: 0x%X,"
+				" TX_A_SWING tuning register : 0x%X\n",
+			__func__,
+			(readl_relaxed(phy->base +\
+			QSERDES_TX_A_TX_EMP_POST1_LVL) & 0x1F),
+			(readl_relaxed(phy->base +\
+			QSERDES_TX_A_TX_DRV_LVL)) & 0x1F);
+
+	dev_dbg(uphy->dev, "%s, TX_B_PRE_EMPHASIS tuning register: 0x%X,"
+				" TX_B_SWING tuning register : 0x%X\n",
+			__func__,
+			(readl_relaxed(phy->base +\
+			QSERDES_TX_B_TX_EMP_POST1_LVL) & 0x1F),
+			(readl_relaxed(phy->base +\
+			QSERDES_TX_B_TX_DRV_LVL)) & 0x1F);
+#endif
 
 	return 0;
 }
@@ -689,6 +792,28 @@ static int msm_ssphy_qmp_probe(struct platform_device *pdev)
 			return -EINVAL;
 		}
 	}
+
+#ifdef CONFIG_LGE_USB_GADGET
+	ret = of_property_read_u32(dev->of_node, "qcom,tx-a-pre-emphasis",
+						&phy->tx_a_pre_emphasis);
+	if (ret)
+		phy->tx_a_pre_emphasis = 0;
+
+	ret = of_property_read_u32(dev->of_node, "qcom,tx-b-pre-emphasis",
+						&phy->tx_b_pre_emphasis);
+	if (ret)
+		phy->tx_b_pre_emphasis = 0;
+
+	ret = of_property_read_u32(dev->of_node, "qcom,tx_a_swing",
+						&phy->tx_a_swing);
+	if (ret)
+		phy->tx_a_swing = 0;
+
+	ret = of_property_read_u32(dev->of_node, "qcom,tx_b_swing",
+						&phy->tx_b_swing);
+	if (ret)
+		phy->tx_b_swing = 0;
+#endif
 
 	/* Set default core voltage values */
 	phy->core_voltage_levels[VOLTAGE_LEVEL_NONE] = 0;

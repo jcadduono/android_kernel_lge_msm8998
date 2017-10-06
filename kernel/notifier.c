@@ -59,6 +59,19 @@ static int notifier_chain_unregister(struct notifier_block **nl,
 	return -ENOENT;
 }
 
+#ifdef CONFIG_LGE_SUSPEND_WATCHDOG
+#include <linux/suspend.h>
+#define MAX_SUSPEND_WDT_DEBUG_ARRAY 20
+
+struct notifier_call_debug {
+	unsigned long start;
+	unsigned long end;
+	void *func;
+};
+
+static struct notifier_call_debug suspend_wdt_debug[MAX_SUSPEND_WDT_DEBUG_ARRAY];
+#endif
+
 /**
  * notifier_call_chain - Informs the registered notifiers about an event.
  *	@nl:		Pointer to head of the blocking notifier chain
@@ -77,6 +90,9 @@ static int notifier_call_chain(struct notifier_block **nl,
 {
 	int ret = NOTIFY_DONE;
 	struct notifier_block *nb, *next_nb;
+#ifdef CONFIG_LGE_SUSPEND_WATCHDOG
+	int i = 0;
+#endif
 
 	nb = rcu_dereference_raw(*nl);
 
@@ -90,8 +106,21 @@ static int notifier_call_chain(struct notifier_block **nl,
 			continue;
 		}
 #endif
+#ifdef CONFIG_LGE_SUSPEND_WATCHDOG
+		if ((val == PM_SUSPEND_PREPARE)
+			&& (i < MAX_SUSPEND_WDT_DEBUG_ARRAY)) {
+			suspend_wdt_debug[i].start = sched_clock();
+			suspend_wdt_debug[i].func = nb->notifier_call;
+		}
+#endif
 		ret = nb->notifier_call(nb, val, v);
 
+#ifdef CONFIG_LGE_SUSPEND_WATCHDOG
+		if ((val == PM_SUSPEND_PREPARE)
+			&& (i < MAX_SUSPEND_WDT_DEBUG_ARRAY)) {
+			suspend_wdt_debug[i++].end = sched_clock();
+		}
+#endif
 		if (nr_calls)
 			(*nr_calls)++;
 

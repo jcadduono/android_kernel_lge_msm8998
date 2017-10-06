@@ -1,0 +1,17 @@
+#
+# Input misc drivers configuration
+#
+menuconfig INPUT_SENSOR
+	bool "Sensor devices"
+	help
+	  Say Y here, and a list of Sensor input drivers will be displayed.
+	  Everything that didn't fit into the other categories is here. This option
+	  doesn't affect the kernel.
+
+	  If unsure, say Y.
+
+config USE_CAP_SENSOR
+       bool "SX9320 support"
+       depends on I2C
+       help
+         Support SX9320 as an input device.

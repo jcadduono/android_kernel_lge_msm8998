@@ -3602,6 +3602,12 @@ static int dwc3_msm_gadget_vbus_draw(struct dwc3_msm *mdwc, unsigned mA)
 	if (pval.intval != POWER_SUPPLY_TYPE_USB)
 		return 0;
 
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_CABLE_DETECT
+	power_supply_get_property(mdwc->usb_psy, POWER_SUPPLY_PROP_PRESENT, &pval);
+	if (!pval.intval)
+		return 0;
+#endif
+
 	dev_info(mdwc->dev, "Avail curr from USB = %u\n", mA);
 
 	/* Set max current limit in uA */

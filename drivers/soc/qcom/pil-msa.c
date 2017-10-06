@@ -355,6 +355,12 @@ int __pil_mss_deinit_image(struct pil_desc *pil, bool err_path)
 	if (q6_drv->ahb_clk_vote)
 		clk_disable_unprepare(q6_drv->ahb_clk);
 
+	if (system_state == SYSTEM_RESTART ||
+		system_state == SYSTEM_POWER_OFF) {
+		pr_err("Leaking MBA memory to prevent access during lockdown\n");
+		return ret;
+	}
+
 	/* In case of any failure where reclaiming MBA and DP memory
 	 * could not happen, free the memory here */
 	if (drv->q6->mba_dp_virt) {

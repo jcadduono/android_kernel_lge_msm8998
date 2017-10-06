@@ -45,7 +45,8 @@
 #define _LINUX_BALLOON_COMPACTION_H
 #include <linux/pagemap.h>
 #include <linux/page-flags.h>
-#include <linux/migrate.h>
+#include <linux/node.h>
+#include <linux/compaction.h>
 #include <linux/gfp.h>
 #include <linux/err.h>
 #include <linux/fs.h>

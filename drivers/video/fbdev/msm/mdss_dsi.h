@@ -250,6 +250,15 @@ enum {
 	DSI_CTRL_MAX,
 };
 
+#if defined(CONFIG_LGE_DISPLAY_DYNAMIC_RESOLUTION_SWITCH)
+enum {
+	DYNAMIC_RESOLUTION_SWITCH_NONE = 0,
+	DYNAMIC_RESOLUTION_SWITCH_IDLE,
+	DYNAMIC_RESOLUTION_SWITCH_RUNNING,
+	DYNAMIC_RESOLUTION_SWITCH_FINISH,
+};
+#endif
+
 /*
  * Common DSI properties for each controller. The DSI root probe will create the
  * shared_data struct which should be accessible to each controller. The goal is
@@ -361,6 +370,10 @@ struct dsi_panel_timing {
 	char t_clk_post;
 	char t_clk_pre;
 	struct dsi_panel_cmds on_cmds;
+#if defined(CONFIG_LGE_ENHANCE_GALLERY_SHARPNESS)
+	struct dsi_panel_cmds sharpness_on_cmds;
+	struct dsi_panel_cmds ce_on_cmds;
+#endif
 	struct dsi_panel_cmds post_panel_on_cmds;
 	struct dsi_panel_cmds switch_cmds;
 };
@@ -414,6 +427,9 @@ struct dsi_err_container {
 #define MDSS_DSI_COMMAND_COMPRESSION_MODE_CTRL3	0x02b0
 #define MSM_DBA_CHIP_NAME_MAX_LEN				20
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+#include "lge/lge_mdss_dsi.h"
+#endif
 struct mdss_dsi_ctrl_pdata {
 	int ndx;	/* panel_num */
 	int (*on) (struct mdss_panel_data *pdata);
@@ -458,7 +474,15 @@ struct mdss_dsi_ctrl_pdata {
 	int avdd_en_gpio;
 	bool avdd_en_gpio_invert;
 	int lcd_mode_sel_gpio;
+#ifdef CONFIG_MACH_MSM8998_TAIMEN
+	int extra_ldo_vddio_gpio;
+	int extra_ldo_vpnl_gpio;
+	int extra_ldo_lcd_vcl_gpio;
+#endif
 	int bklt_ctrl;	/* backlight ctrl */
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	int panel_power_is_on;
+#endif
 	bool pwm_pmi;
 	int pwm_period;
 	int pwm_pmic_gpio;
@@ -493,6 +517,10 @@ struct mdss_dsi_ctrl_pdata {
 	struct mdss_intf_ulp_clamp *clamp_handler;
 
 	struct dsi_panel_cmds on_cmds;
+#if defined(CONFIG_LGE_DISPLAY_AMBIENT_SUPPORTED)
+	struct dsi_panel_cmds *ambient_cmds;
+	bool ambient_reg_backup;
+#endif
 	struct dsi_panel_cmds post_dms_on_cmds;
 	struct dsi_panel_cmds post_panel_on_cmds;
 	struct dsi_panel_cmds off_cmds;
@@ -575,6 +603,9 @@ struct mdss_dsi_ctrl_pdata {
 	struct mdss_dsi_debugfs_info *debugfs_info;
 
 	struct dsi_err_container err_cont;
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	struct lge_mdss_dsi_ctrl_pdata *lge_ctrl_pdata;
+#endif
 
 	struct kobject *kobj;
 	int fb_node;
@@ -590,6 +621,40 @@ struct mdss_dsi_ctrl_pdata {
 	bool update_phy_timing; /* flag to recalculate PHY timings */
 
 	bool phy_power_off;
+
+#if defined(CONFIG_LGE_DISPLAY_ERROR_DETECT)
+	bool err_irq_enabled;
+	u8 err_result;
+	u8 err_mask;
+	u8 err_crash;
+	bool is_first_err_mask;
+	struct dsi_panel_cmds esd_detect_cmds;
+	struct dsi_panel_cmds memory_err_detect_cmds;
+	struct workqueue_struct *err_int_workq;
+	struct delayed_work err_int_work;
+#endif
+#if defined(CONFIG_LGE_DISPLAY_DYNAMIC_RESOLUTION_SWITCH)
+	u8 drs_state;
+	struct kobject *drs_kobj;
+	int req_resolution;
+	bool update_panel_cfg;
+	struct mutex drs_lock;
+	struct workqueue_struct *drs_workq;
+	struct delayed_work drs_work;
+	struct delayed_work drs_work_sub;
+	struct completion drs_done;
+	bool requested_resolution_switch;
+#endif
+#if defined(CONFIG_LGE_MIPI_JOAN_ONCELL_QHD_CMD_PANEL)
+	bool need_post_panel_on;
+#endif
+#if defined(CONFIG_LGE_DISPLAY_BIST_MODE)
+	int bist_on;
+	bool keep_bist_on;
+	struct mutex bist_lock;
+	struct dsi_panel_cmds bist_on_cmds;
+	struct dsi_panel_cmds bist_off_cmds;
+#endif
 };
 
 struct dsi_status_data {

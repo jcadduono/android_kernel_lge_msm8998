@@ -73,10 +73,18 @@
 
 #define KI_COEFF_MAX			62200
 #define KI_COEFF_SOC_LEVELS		3
+#ifdef CONFIG_LGE_PM_DEBUG
+#define FG_INFORM_NORMAL_TIME 15000
+#endif
 
 #define SLOPE_LIMIT_COEFF_MAX		31
 
 #define BATT_THERM_NUM_COEFFS		3
+//#define CONFIG_LGE_PM_SOC_SCALING_DEBUG/*This is a SoC Scaling debug feature*/
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+#define MAX_CYCLE_STEP  4
+#define DEFAULT_FLOAT_VOLTAGE	4400000
+#endif
 
 /* Debug flag definitions */
 enum fg_debug_flag {
@@ -89,6 +97,9 @@ enum fg_debug_flag {
 	FG_BUS_READ		= BIT(6), /* Show REGMAP reads */
 	FG_CAP_LEARN		= BIT(7), /* Show capacity learning */
 	FG_TTF			= BIT(8), /* Show time to full */
+#ifdef CONFIG_LGE_PM_DEBUG
+	FG_LGE          = BIT(9), /*LGE Debug feature*/
+#endif
 };
 
 /* SRAM access */
@@ -172,6 +183,9 @@ enum fg_sram_param_id {
 	FG_SRAM_ESR_TIGHT_FILTER,
 	FG_SRAM_ESR_BROAD_FILTER,
 	FG_SRAM_SLOPE_LIMIT,
+#ifdef CONFIG_LGE_PM
+	FG_SRAM_SYS_STANDBY_CURR,
+#endif
 	FG_SRAM_MAX,
 };
 
@@ -306,7 +320,15 @@ struct fg_irq_info {
 };
 
 struct fg_circ_buf {
+#ifdef CONFIG_LGE_PM
+	int max;
+	int min;
+	int is_fast;
+	int need_uevent;
+	int	arr[60];
+#else
 	int	arr[20];
+#endif
 	int	size;
 	int	head;
 };
@@ -414,6 +436,44 @@ struct fg_chip {
 	struct delayed_work	sram_dump_work;
 	struct fg_circ_buf	ibatt_circ_buf;
 	struct fg_circ_buf	vbatt_circ_buf;
+#ifdef CONFIG_LGE_PM_DEBUG
+	struct delayed_work fg_inform_work;
+#endif
+#ifdef CONFIG_LGE_PM_SOC_SCALING
+	int			batt_profile_enabled;
+	int			batt_scale_criteria;
+#endif
+#ifdef CONFIG_LGE_PM_SOC_SCALING_DEBUG
+	struct delayed_work soc_level_log;
+#endif
+#ifdef CONFIG_LGE_PM_CHARGERLOGO_WAIT_FOR_FG_INIT
+	int			first_soc_est_done;
+#endif
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+	u32			batt_life_cycle_set[MAX_CYCLE_STEP];
+	u32			batt_life_cycle_offset[MAX_CYCLE_STEP];
+	u32			batt_life_cycle_vfloat[MAX_CYCLE_STEP];
+	int			lge_cycle_enable;
+	int			battery_cycle;
+	int			rescale_offset;
+	int			cycle_based_vfloat;
+	int			batt_life_prev_cycle[BUCKET_COUNT];
+	struct work_struct	fg_set_cycle_based_offset;
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_WEIGHT
+	int			cycle_weight_integer[BUCKET_COUNT];
+	int			cycle_weight_fraction[BUCKET_COUNT];
+	ktime_t		cycle_weight_update_time;
+	int			cycle_weight_update_time_delta;
+	int			cycle_weight_update_count;
+	u32			cycle_weight_batt_temp_sum;
+	int			cycle_weight_avg_batt_temp;
+	u32			cycle_weight_batt_voltage_sum;
+	int			cycle_weight_avg_batt_voltage;
+#endif
+#endif
+#ifdef CONFIG_LGE_PM_TIME_TO_FULL
+	int 			ttf_soc;
+#endif
 };
 
 /* Debugfs data structures are below */

@@ -100,6 +100,9 @@ int msm_dss_gpio_enable(struct dss_gpio *in_gpio, int num_gpio, int enable);
 
 int msm_dss_config_vreg(struct device *dev, struct dss_vreg *in_vreg,
 	int num_vreg, int config);
+#if defined (CONFIG_LGE_LCD_POWER_CTRL)
+int msm_dss_set_vreg(struct dss_vreg *in_vreg, int num_vreg, int mode);
+#endif
 int msm_dss_enable_vreg(struct dss_vreg *in_vreg, int num_vreg,	int enable);
 
 int msm_dss_get_clk(struct device *dev, struct dss_clk *clk_arry, int num_clk);

@@ -89,7 +89,12 @@ static inline struct f_acm *port_to_acm(struct gserial *p)
 /* notification endpoint uses smallish and infrequent fixed-size messages */
 
 #define GS_NOTIFY_INTERVAL_MS		32
+#ifdef CONFIG_LGE_USB_GADGET
+#define GS_NOTIFY_MAXPACKET		16	/* For LG host driver */
+#define GS_DESC_NOTIFY_MAXPACKET	64	/* For acm_hs_notify_desc */
+#else
 #define GS_NOTIFY_MAXPACKET		10	/* notification + 2 bytes */
+#endif
 
 /* interface and class descriptors: */
 
@@ -205,7 +210,11 @@ static struct usb_endpoint_descriptor acm_hs_notify_desc = {
 	.bDescriptorType =	USB_DT_ENDPOINT,
 	.bEndpointAddress =	USB_DIR_IN,
 	.bmAttributes =		USB_ENDPOINT_XFER_INT,
+#ifdef CONFIG_LGE_USB_GADGET
+	.wMaxPacketSize =	cpu_to_le16(GS_DESC_NOTIFY_MAXPACKET),
+#else
 	.wMaxPacketSize =	cpu_to_le16(GS_NOTIFY_MAXPACKET),
+#endif
 	.bInterval =		USB_MS_TO_HS_INTERVAL(GS_NOTIFY_INTERVAL_MS),
 };
 
@@ -392,6 +401,14 @@ static int acm_setup(struct usb_function *f, const struct usb_ctrlrequest *ctrl)
 		 * that bit, we should return to that no-flow state.
 		 */
 		acm->port_handshake_bits = w_value;
+#ifdef CONFIG_LGE_USB_GADGET
+		pr_info("%s: USB_CDC_REQ_SET_CONTROL_LINE_STATE: DTR:%d RTS:%d\n",
+				__func__, w_value & ACM_CTRL_DTR ? 1 : 0,
+				w_value & ACM_CTRL_RTS ? 1 : 0);
+
+		if (acm->port.notify_modem)
+			acm->port.notify_modem(&acm->port, acm->port_num, w_value);
+#endif
 		break;
 
 	default:
@@ -496,15 +513,25 @@ static int acm_cdc_notify(struct f_acm *acm, u8 type, u16 value,
 	struct usb_ep			*ep = acm->notify;
 	struct usb_request		*req;
 	struct usb_cdc_notification	*notify;
+#ifndef CONFIG_LGE_USB_GADGET
 	const unsigned			len = sizeof(*notify) + length;
+#endif
 	void				*buf;
 	int				status;
+#ifdef CONFIG_LGE_USB_GADGET
+	unsigned char noti_buf[GS_NOTIFY_MAXPACKET];
+	memset(noti_buf, 0, GS_NOTIFY_MAXPACKET);
+#endif
 
 	req = acm->notify_req;
 	acm->notify_req = NULL;
 	acm->pending = false;
 
+#ifdef CONFIG_LGE_USB_GADGET
+	req->length = GS_NOTIFY_MAXPACKET;
+#else
 	req->length = len;
+#endif
 	notify = req->buf;
 	buf = notify + 1;
 
@@ -514,7 +541,12 @@ static int acm_cdc_notify(struct f_acm *acm, u8 type, u16 value,
 	notify->wValue = cpu_to_le16(value);
 	notify->wIndex = cpu_to_le16(acm->ctrl_id);
 	notify->wLength = cpu_to_le16(length);
+#ifdef CONFIG_LGE_USB_GADGET
+	memcpy(noti_buf, data, length);
+	memcpy(buf, noti_buf, GS_NOTIFY_MAXPACKET);
+#else
 	memcpy(buf, data, length);
+#endif
 
 	/* ep_queue() can complete immediately if it fills the fifo... */
 	spin_unlock(&acm->lock);
@@ -580,6 +612,59 @@ static void acm_connect(struct gserial *port)
 	acm_notify_serial_state(acm);
 }
 
+#ifdef CONFIG_LGE_USB_GADGET
+unsigned int acm_get_dtr(struct gserial *port)
+{
+	struct f_acm		*acm = port_to_acm(port);
+
+	if (acm->port_handshake_bits & ACM_CTRL_DTR)
+		return 1;
+	else
+		return 0;
+}
+
+unsigned int acm_get_rts(struct gserial *port)
+{
+	struct f_acm		*acm = port_to_acm(port);
+
+	if (acm->port_handshake_bits & ACM_CTRL_RTS)
+		return 1;
+	else
+		return 0;
+}
+
+unsigned int acm_send_carrier_detect(struct gserial *port, unsigned int yes)
+{
+	struct f_acm		*acm = port_to_acm(port);
+	u16			state;
+
+	pr_info("%s : ACM_CTRL_DCD is %s\n", __func__, (yes ? "yes" : "no"));
+	state = acm->serial_state;
+	state &= ~ACM_CTRL_DCD;
+	if (yes)
+		state |= ACM_CTRL_DCD;
+
+	acm->serial_state = state;
+	return acm_notify_serial_state(acm);
+
+}
+
+unsigned int acm_send_ring_indicator(struct gserial *port, unsigned int yes)
+{
+	struct f_acm		*acm = port_to_acm(port);
+	u16			state;
+
+	state = acm->serial_state;
+	state &= ~ACM_CTRL_RI;
+	if (yes)
+		state |= ACM_CTRL_RI;
+
+	acm->serial_state = state;
+	return acm_notify_serial_state(acm);
+
+}
+#endif
+
 static void acm_disconnect(struct gserial *port)
 {
 	struct f_acm		*acm = port_to_acm(port);
@@ -601,6 +686,17 @@ static int acm_send_break(struct gserial *port, int duration)
 	acm->serial_state = state;
 	return acm_notify_serial_state(acm);
 }
+
+#ifdef CONFIG_LGE_USB_GADGET
+static int acm_send_modem_ctrl_bits(struct gserial *port, int ctrl_bits)
+{
+	struct f_acm *acm = port_to_acm(port);
+
+	acm->serial_state = ctrl_bits;
+
+	return acm_notify_serial_state(acm);
+}
+	#endif
 
 /*-------------------------------------------------------------------------*/
 
@@ -726,6 +822,32 @@ static void acm_free_func(struct usb_function *f)
 	kfree(acm);
 }
 
+#ifdef CONFIG_LGE_USB_GADGET_MULTI_CONFIG
+static int acm_set_mac_os(struct usb_function *f)
+{
+	struct usb_composite_dev *cdev = f->config->cdev;
+	struct usb_interface_descriptor *desc;
+
+	desc = (struct usb_interface_descriptor *)f->fs_descriptors[1];
+	desc->bInterfaceClass = USB_CLASS_VENDOR_SPEC;
+
+	if (f->hs_descriptors && gadget_is_dualspeed(cdev->gadget)) {
+		desc = (struct usb_interface_descriptor *)f->hs_descriptors[1];
+		desc->bInterfaceClass = USB_CLASS_VENDOR_SPEC;
+	}
+
+	if (f->ss_descriptors && gadget_is_superspeed(cdev->gadget)) {
+		desc = (struct usb_interface_descriptor *)f->ss_descriptors[1];
+		desc->bInterfaceClass = USB_CLASS_VENDOR_SPEC;
+	}
+
+	DBG(cdev, "MAC OS ACM bInterfaceClass change to %u\n",
+	     USB_CLASS_VENDOR_SPEC);
+
+	return 0;
+}
+#endif
+
 static struct usb_function *acm_alloc_func(struct usb_function_instance *fi)
 {
 	struct f_serial_opts *opts;
@@ -738,6 +860,13 @@ static struct usb_function *acm_alloc_func(struct usb_function_instance *fi)
 	spin_lock_init(&acm->lock);
 
 	acm->port.connect = acm_connect;
+#ifdef CONFIG_LGE_USB_GADGET
+	acm->port.get_dtr = acm_get_dtr;
+	acm->port.get_rts = acm_get_rts;
+	acm->port.send_carrier_detect = acm_send_carrier_detect;
+	acm->port.send_ring_indicator = acm_send_ring_indicator;
+	acm->port.send_modem_ctrl_bits = acm_send_modem_ctrl_bits;
+#endif
 	acm->port.disconnect = acm_disconnect;
 	acm->port.send_break = acm_send_break;
 
@@ -753,6 +882,9 @@ static struct usb_function *acm_alloc_func(struct usb_function_instance *fi)
 	acm->port_num = opts->port_num;
 	acm->port.func.unbind = acm_unbind;
 	acm->port.func.free_func = acm_free_func;
+#ifdef CONFIG_LGE_USB_GADGET_MULTI_CONFIG
+	acm->port.func.set_mac_os = acm_set_mac_os;
+#endif
 
 	return &acm->port.func;
 }

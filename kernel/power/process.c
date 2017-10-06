@@ -25,6 +25,11 @@
  */
 unsigned int __read_mostly freeze_timeout_msecs = 20 * MSEC_PER_SEC;
 
+#ifdef CONFIG_LGE_SUSPEND_WATCHDOG
+/* added to catch delayed process */
+static struct task_struct *todo_process;
+#endif
+
 static int try_to_freeze_tasks(bool user_only)
 {
 	struct task_struct *g, *p;
@@ -54,8 +59,15 @@ static int try_to_freeze_tasks(bool user_only)
 			if (p == current || !freeze_task(p))
 				continue;
 
+#ifdef CONFIG_LGE_SUSPEND_WATCHDOG
+			if (!freezer_should_skip(p)) {
+				todo++;
+				todo_process = p;
+			}
+#else
 			if (!freezer_should_skip(p))
 				todo++;
+#endif
 		}
 		read_unlock(&tasklist_lock);
 

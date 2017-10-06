@@ -17,6 +17,14 @@
 #define ADC_RR_FAKE_BATT_LOW_LSB(chip)		(chip->rradc_base + 0x58)
 #define ADC_RR_FAKE_BATT_HIGH_LSB(chip)		(chip->rradc_base + 0x5A)
 
+#ifdef CONFIG_LGE_PM_INOV_GEN3_SYSFS_SUPPORT
+/* FG_ADC_RR register definitions for INOV */
+#define ADC_RR_SKIN_HOT(chip)			(chip->rradc_base + 0x86)
+#define ADC_RR_SKIN_TOO_HOT(chip)		(chip->rradc_base + 0x87)
+#define ADC_RR_CHARGER_HOT(chip)		(chip->rradc_base + 0xBE)
+#define ADC_RR_CHARGER_TOO_HOT(chip)		(chip->rradc_base + 0xBF)
+#endif
+
 /* FG_BATT_SOC register definitions */
 #define BATT_SOC_FG_ALG_STS(chip)		(chip->batt_soc_base + 0x06)
 #define BATT_SOC_FG_ALG_AUX_STS0(chip)		(chip->batt_soc_base + 0x07)

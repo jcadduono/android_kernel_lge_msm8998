@@ -528,6 +528,10 @@ static int cpr3_msm8996_mmss_calculate_open_loop_voltages(
 	const int *ref_volt;
 	int *fuse_volt;
 	int *fmax_corner;
+#ifdef CONFIG_LGE_CPR_MANAGER
+	bool has_open_loop_vol_adjust;
+	s8 gfx_margin;
+#endif
 
 	fuse_volt = kcalloc(vreg->fuse_corner_count, sizeof(*fuse_volt),
 				GFP_KERNEL);
@@ -638,6 +642,19 @@ static int cpr3_msm8996_mmss_calculate_open_loop_voltages(
 				freq_low, volt_low, freq_high, volt_high,
 				vreg->corner[j].proc_freq);
 	}
+#ifdef CONFIG_LGE_CPR_MANAGER
+	has_open_loop_vol_adjust = of_find_property(vreg->of_node,
+					"qcom,cpr-open-loop-voltage-adjustment", NULL);
+	if( !has_open_loop_vol_adjust ) {
+		gfx_margin = get_lg_cpr_margins(vreg->name);
+		cpr3_info(vreg,"No open loop voltage adjust. OEM margin %d \n",gfx_margin);
+		for (i = 0; i < vreg->corner_count; i++) {
+			vreg->corner[i].open_loop_volt += gfx_margin * 1000;
+			vreg->corner[i].floor_volt += gfx_margin * 1000;
+			vreg->corner[i].ceiling_volt += gfx_margin * 1000;
+		}
+	}
+#endif
 
 done:
 	if (rc == 0) {

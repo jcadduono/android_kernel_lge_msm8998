@@ -27,6 +27,11 @@
 
 static DEFINE_IDA(ctrl_ida);
 
+#ifdef CONFIG_LGE_MISC_PWR_CONTROLLER
+struct spmi_device *lge_sdev[SPMI_MAX_SLAVE_ID] = {NULL};
+EXPORT_SYMBOL_GPL(lge_sdev);
+#endif
+
 static void spmi_dev_release(struct device *dev)
 {
 	struct spmi_device *sdev = to_spmi_device(dev);
@@ -485,6 +490,9 @@ static void of_spmi_register_devices(struct spmi_controller *ctrl)
 
 		sdev->dev.of_node = node;
 		sdev->usid = (u8) reg[0];
+#ifdef CONFIG_LGE_MISC_PWR_CONTROLLER
+		lge_sdev[sdev->usid] = sdev;
+#endif
 
 		err = spmi_device_add(sdev);
 		if (err) {

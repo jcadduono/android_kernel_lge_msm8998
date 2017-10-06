@@ -1439,7 +1439,9 @@ static irqreturn_t arm_smmu_context_fault(int irq, void *dev)
 		if (!non_fatal_fault) {
 			dev_err(smmu->dev,
 				"Unhandled context faults are fatal on this domain. Going down now...\n");
+#ifndef CONFIG_MACH_MSM8998_JOAN
 			BUG();
+#endif
 		}
 	}
 
