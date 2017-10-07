@@ -393,9 +393,6 @@ static int mdss_dsi_panel_power_off(struct mdss_panel_data *pdata)
 {
 	int ret = 0;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
-#ifdef CONFIG_MACH_MSM8998_TAIMEN
-	struct mdss_panel_info *pinfo;
-#endif
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		ret = -EINVAL;
@@ -404,16 +401,6 @@ static int mdss_dsi_panel_power_off(struct mdss_panel_data *pdata)
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
-#ifdef CONFIG_MACH_MSM8998_TAIMEN
-	pinfo = &ctrl_pdata->panel_data.panel_info;
-
-	if(strncmp(&pinfo->panel_name[0],"SW43402 cmd mode", 16) == 0) {
-		gpio_set_value(ctrl_pdata->extra_ldo_vpnl_gpio,0);
-		usleep_range(10000,10000);
-		gpio_set_value(ctrl_pdata->extra_ldo_vddio_gpio,0);
-		usleep_range(10000,10000);
-	}
-#endif
 
 	ret = mdss_dsi_panel_reset(pdata, 0);
 	if (ret) {
@@ -446,10 +433,6 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata)
 	int ret = 0;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 
-#ifdef CONFIG_MACH_MSM8998_TAIMEN
-	struct mdss_panel_info *pinfo;
-#endif
-
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
@@ -457,20 +440,6 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata)
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
-#ifdef CONFIG_MACH_MSM8998_TAIMEN
-	pinfo = &ctrl_pdata->panel_data.panel_info;
-
-	if(strncmp(&pinfo->panel_name[0],"SW43402 cmd mode", 16) == 0) {
-		gpio_set_value(ctrl_pdata->extra_ldo_vddio_gpio,1);
-		usleep_range(10000,10000);
-		gpio_set_value(ctrl_pdata->extra_ldo_vpnl_gpio,1);
-		usleep_range(10000,10000);
-	} else {
-		gpio_set_value(ctrl_pdata->extra_ldo_vddio_gpio,1);
-		usleep_range(10000,20000);
-		gpio_set_value(ctrl_pdata->extra_ldo_lcd_vcl_gpio,1);
-	}
-#endif
 
 	ret = msm_dss_enable_vreg(
 		ctrl_pdata->panel_power_data.vreg_config,
@@ -4787,22 +4756,6 @@ static int mdss_dsi_parse_gpio_params(struct platform_device *ctrl_pdev,
 	}
 #endif
 
-#ifdef CONFIG_MACH_MSM8998_TAIMEN
-	ctrl_pdata->extra_ldo_vddio_gpio = of_get_named_gpio(ctrl_pdev->dev.of_node,
-			 "qcom,platform-extraldo-vddio-gpio", 0);
-	if (!gpio_is_valid(ctrl_pdata->extra_ldo_vddio_gpio))
-		pr_err("%s:%d, vddio gpio not specified\n", __func__, __LINE__);
-
-	ctrl_pdata->extra_ldo_vpnl_gpio = of_get_named_gpio(ctrl_pdev->dev.of_node,
-			 "qcom,platform-extraldo-vpnl-gpio", 0);
-	if (!gpio_is_valid(ctrl_pdata->extra_ldo_vpnl_gpio))
-		pr_err("%s:%d, vpnl gpio not specified\n", __func__, __LINE__);
-
-	ctrl_pdata->extra_ldo_lcd_vcl_gpio = of_get_named_gpio(ctrl_pdev->dev.of_node,
-			 "qcom,platform-extraldo-lcd-vcl-gpio", 0);
-	if (!gpio_is_valid(ctrl_pdata->extra_ldo_lcd_vcl_gpio))
-		pr_err("%s:%d, lcd vcl gpio not specified\n", __func__, __LINE__);
-#endif
 	return 0;
 }
 

@@ -336,7 +336,7 @@ static void pinconf_dump_group(struct pinctrl_dev *pctldev,
 		ops->pin_config_group_dbg_show(pctldev, s, selector);
 }
 
-#if defined(CONFIG_MACH_MSM8998_LUCY) || defined(CONFIG_MACH_MSM8998_JOAN)
+#ifdef CONFIG_MACH_MSM8998_JOAN
 extern bool msm_gpio_check_access(int gpio);
 #endif
 static int pinconf_groups_show(struct seq_file *s, void *what)
@@ -353,12 +353,12 @@ static int pinconf_groups_show(struct seq_file *s, void *what)
 		const char *gname = pctlops->get_group_name(pctldev, selector);
 
 		seq_printf(s, "%u (%s):", selector, gname);
-#if defined(CONFIG_MACH_MSM8998_LUCY) || defined(CONFIG_MACH_MSM8998_JOAN)
+#ifdef CONFIG_MACH_MSM8998_JOAN
 		if(msm_gpio_check_access(selector) == true)
 		{
 #endif
 		pinconf_dump_group(pctldev, s, selector, gname);
-#if defined(CONFIG_MACH_MSM8998_LUCY) || defined(CONFIG_MACH_MSM8998_JOAN)
+#ifdef CONFIG_MACH_MSM8998_JOAN
 }
 #endif
 		seq_printf(s, "\n");

@@ -1,19 +1,9 @@
 # Per Platform
-ifeq ($(CONFIG_MACH_MSM8998_LUCY),y)
-DTS_PROJECT := msm8998-lucy
-endif
 ifeq ($(CONFIG_MACH_MSM8998_JOAN),y)
 DTS_PROJECT := msm8998-joan
 endif
 
 # Per Device
-ifeq ($(CONFIG_MACH_MSM8998_LUCY_KR),y)
-DTS_TARGET := msm8998-lucy_kr
-endif
-ifeq ($(CONFIG_MACH_MSM8998_LUCY_DCM_JP),y)
-DTS_TARGET := msm8998-lucy_dcm_jp
-endif
-
 ifeq ($(CONFIG_MACH_MSM8998_JOAN_KR),y)
 DTS_TARGET := msm8998-joan_kr
 endif

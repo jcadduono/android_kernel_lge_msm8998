@@ -108,7 +108,7 @@ static char *gpio_cfg_str[] = {
 static int gpio_user_sel = -1;
 
 #ifdef CONFIG_DEBUG_FS
-#if defined(CONFIG_MACH_MSM8998_LUCY) || defined(CONFIG_MACH_MSM8998_JOAN)
+#ifdef CONFIG_MACH_MSM8998_JOAN
 extern bool msm_gpio_check_access(int gpio);
 #endif
 #endif
@@ -123,7 +123,7 @@ void gpio_debug_print(void)
 	pr_err("\nMSM GPIOs:\n");
 	for (i = 0; i < dbgdata->n_msm_gpio; i++) {
 #ifdef CONFIG_DEBUG_FS
-#if defined(CONFIG_MACH_MSM8998_LUCY) || defined(CONFIG_MACH_MSM8998_JOAN)
+#ifdef CONFIG_MACH_MSM8998_JOAN
 		if(msm_gpio_check_access(i) == true)
 		{
 #endif
@@ -142,7 +142,7 @@ void gpio_debug_print(void)
 				((cfg & 0x200) >> 9) ? ((out >> 1) & 0x1) ? "HIGH" : "LOW " : "    ",
 				intr & 0x1 ? "HIGH" : "    ");
 #ifdef CONFIG_DEBUG_FS
-#if defined(CONFIG_MACH_MSM8998_LUCY) || defined(CONFIG_MACH_MSM8998_JOAN)
+#ifdef CONFIG_MACH_MSM8998_JOAN
    }
    else
    {

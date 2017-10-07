@@ -335,7 +335,7 @@ int touch_boot_mode_check(struct device *dev)
 enum touch_device_type touch_get_device_type(void)
 {
 	enum touch_device_type ret = TYPE_SW49408;
-#if defined(CONFIG_LGE_MIPI_LUCY_INCELL_QHD_CMD_PANEL) || defined(CONFIG_LGE_MIPI_JOAN_ONCELL_QHD_CMD_PANEL)
+#ifdef CONFIG_LGE_MIPI_JOAN_ONCELL_QHD_CMD_PANEL
 	ret = lge_get_panel();
 #endif
 	TOUCH_I("%s = [%d]\n", __func__, ret);

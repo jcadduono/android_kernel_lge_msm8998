@@ -122,12 +122,6 @@ config FB_MSM_MDSS_XLOG_DEBUG
 	driver during fatal errors and enable some display-driver logging
 	into an internal buffer (this avoids logging overhead).
 
-config LGE_MIPI_LUCY_INCELL_QHD_CMD_PANEL
-	bool "LGE_MIPI_LUCY_INCELL_QHD_CMD_PANEL"
-	default n
-	help
-	  if you say yes here you get support for the Incell Panel.
-
 config LGE_MIPI_JOAN_ONCELL_QHD_CMD_PANEL
 	bool "LGE_MIPI_JOAN_ONCELL_QHD_CMD_PANEL"
 	default n
@@ -296,23 +290,11 @@ config LGE_DISPLAY_OVERRIDE_MDSS_DSI_CTRL_SHUTDOWN
 	The LGE DISPLAY COMMON provides support for
 		ovrriding mdss_dsi_ctrl_shutdown() function.
 
-config LGE_DISPLAY_LUCY_COMMON
-	depends on LGE_DISPLAY_COMMON
-	bool "Use LGE DISPLAY LUCY COMMON"
-	---help---
-	The H1 COMMON provides support for LUCY panel
-
 config LGE_DISPLAY_JOAN_COMMON
 	depends on LGE_DISPLAY_COMMON
 	bool "Use LGE DISPLAY JOAN COMMON"
 	---help---
 	The H1 COMMON provides support for JOAN panel
-
-config LGE_DISPLAY_TAIMEN_COMMON
-	depends on LGE_DISPLAY_COMMON
-	bool "Use LGE DISPLAY TAIMEN COMMON"
-	---help---
-	The H1 COMMON provides support for TAIMEN panel
 
 config LGE_DISPLAY_VR_MODE
 	depends on LGE_DISPLAY_COMMON

@@ -29,15 +29,9 @@ endif
 
 ifdef CONFIG_LGE_TOUCH_FW_PATH
 fwpath := $(subst ",,$(CONFIG_LGE_TOUCH_FW_PATH))
-ifdef CONFIG_LGE_TOUCH_DUAL
-lge_touch_image_files := $(wildcard $(srctree)/firmware/$(fwpath)/*/*.img)
-lge_touch_image_files += $(wildcard $(srctree)/firmware/$(fwpath)/*/*.ftb)
-lge_touch_image_files += $(wildcard $(srctree)/firmware/$(fwpath)/*/*.txt)
-else
 lge_touch_image_files := $(wildcard $(srctree)/firmware/$(fwpath)/*.img)
 lge_touch_image_files += $(wildcard $(srctree)/firmware/$(fwpath)/*.ftb)
 lge_touch_image_files += $(wildcard $(srctree)/firmware/$(fwpath)/*.txt)
-endif
 endif
 lge_touch_firmware := $(subst $(srctree)/firmware/,,$(lge_touch_image_files))
 fw-shipped-$(CONFIG_LGE_TOUCH_CORE_BASE) += $(lge_touch_firmware)

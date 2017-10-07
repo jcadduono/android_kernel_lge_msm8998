@@ -5,41 +5,6 @@ config MACH_LGE
 
 menu "LGE Board Selection"
 
-config MACH_MSM8998_TAIMEN
-	bool "MSM8998 TAIMEN"
-	depends on ARCH_MSM8998
-	select MACH_LGE
-	help
-	  Support for the Qualcomm MSM8998 TAIMEN device.
-
-config MACH_MSM8998_LUCY
-	bool "MSM8998 LUCY"
-	depends on ARCH_MSM8998
-	select MACH_LGE
-	help
-	  Support for the Qualcomm MSM8998 LUCY device.
-
-config MACH_MSM8998_LUCY_KR
-	bool "MSM8998 LUCY_KR"
-	depends on ARCH_MSM8998
-	select MACH_LGE
-	help
-	  Support for the Qualcomm MSM8998 LUCY_KR device.
-
-config MACH_MSM8998_LUCY_LGU_KR
-	bool "MSM8998 LUCY_LGU_KR"
-	depends on ARCH_MSM8998
-	select MACH_LGE
-	help
-	  Support for the Qualcomm MSM8998 LUCY_LGU_KR device.
-
-config MACH_MSM8998_LUCY_DCM_JP
-	bool "MSM8998 LUCY_DCM_JP"
-	depends on ARCH_MSM8998
-	select MACH_LGE
-	help
-	  Support for the Qualcomm MSM8998 LUCY_DCM_JP device.
-
 config MACH_MSM8998_JOAN
 	bool "MSM8998 JOAN"
 	depends on ARCH_MSM8998

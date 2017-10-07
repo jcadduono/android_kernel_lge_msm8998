@@ -16,7 +16,6 @@
 /{
     mtp_batterydata: qcom,battery-data {
         qcom,batt-id-range-pct = <15>;
-        #include "bringup-qdm-2260mah.dtsi"
         #include "fg-gen3-batterydata-ascent-3450mah.dtsi"
     };
 };

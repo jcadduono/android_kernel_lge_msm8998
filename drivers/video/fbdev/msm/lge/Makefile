@@ -1,6 +1,4 @@
 obj-$(CONFIG_LGE_DISPLAY_JOAN_COMMON) += joan/
-obj-$(CONFIG_LGE_DISPLAY_LUCY_COMMON) += lucy/
-
 
 obj-$(CONFIG_LGE_DISPLAY_COMMON) += lge_mdss_dsi.o
 obj-$(CONFIG_LGE_DISPLAY_COMMON) += lge_mdss_dsi_panel.o

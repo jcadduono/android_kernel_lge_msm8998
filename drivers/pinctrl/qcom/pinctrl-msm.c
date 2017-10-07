@@ -468,7 +468,7 @@ static void msm_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
 #ifdef CONFIG_DEBUG_FS
 #include <linux/seq_file.h>
 
-#if defined(CONFIG_MACH_MSM8998_LUCY) || defined(CONFIG_MACH_MSM8998_JOAN)
+#ifdef CONFIG_MACH_MSM8998_JOAN
 /*
    gpio81 ~ 84 can be controlled only by TZ
    Non-HLOS/trustzone/core/buses/qup_accesscontrol/honeybadger/config/QUPAC_8998_Access.xml
@@ -528,13 +528,13 @@ static void msm_gpio_dbg_show(struct seq_file *s, struct gpio_chip *chip)
 	unsigned i;
 
 	for (i = 0; i < chip->ngpio; i++, gpio++) {
-#if defined(CONFIG_MACH_MSM8998_LUCY) || defined(CONFIG_MACH_MSM8998_JOAN)
+#ifdef CONFIG_MACH_MSM8998_JOAN
 		if(msm_gpio_check_access(gpio) == true)
 		{
 #endif
 		msm_gpio_dbg_show_one(s, NULL, chip, i, gpio);
 		seq_puts(s, "\n");
-#if defined(CONFIG_MACH_MSM8998_LUCY) || defined(CONFIG_MACH_MSM8998_JOAN)
+#ifdef CONFIG_MACH_MSM8998_JOAN
 		}
 #endif
 	}

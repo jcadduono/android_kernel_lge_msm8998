@@ -474,11 +474,6 @@ struct mdss_dsi_ctrl_pdata {
 	int avdd_en_gpio;
 	bool avdd_en_gpio_invert;
 	int lcd_mode_sel_gpio;
-#ifdef CONFIG_MACH_MSM8998_TAIMEN
-	int extra_ldo_vddio_gpio;
-	int extra_ldo_vpnl_gpio;
-	int extra_ldo_lcd_vcl_gpio;
-#endif
 	int bklt_ctrl;	/* backlight ctrl */
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
 	int panel_power_is_on;
