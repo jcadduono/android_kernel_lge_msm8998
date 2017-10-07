@@ -1,0 +1,3 @@
+[submodule "drivers/staging/qcacld-3.0"]
+	path = drivers/staging/qcacld-3.0
+	url = git@github.com:jcadduono/lge_msm8998_drivers_staging_qcacld-3.0
