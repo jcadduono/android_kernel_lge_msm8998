@@ -33,8 +33,8 @@ while [ $# != 0 ]; do
 	shift
 done
 
-[ "$DEVICE" ] || DEVICE=nao_us-perf
-[ "$TARGET" ] || TARGET=joan
+[ "$DEVICE" ] || DEVICE=h930
+[ "$TARGET" ] || TARGET=twrp
 DEFCONFIG=${TARGET}_${DEVICE}_defconfig
 
 cd "$RDIR" || ABORT "Failed to enter $RDIR!"
